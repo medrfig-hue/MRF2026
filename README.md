@@ -1,8 +1,8 @@
 # Le Cahier des Nombres
 
-Jeu de maths pour enfants de 6 à 8 ans (programme **CP**, **CE1** et **CE2**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
+Jeu de maths et de lecture pour enfants de 6 à 8 ans (programme **CP**, **CE1** et **CE2**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
 
-## Les 11 jeux
+## Maths : 11 jeux
 
 | Jeu | CP | CE1 | CE2 |
 | --- | --- | --- | --- |
@@ -17,6 +17,28 @@ Jeu de maths pour enfants de 6 à 8 ans (programme **CP**, **CE1** et **CE2**), 
 | Groupes / Tables / Diviser | compter des paquets | tables de 2, 3, 4, 5, 10 | tables de 2 à 9, × 10, × 100, 43 × 4, division exacte |
 | La monnaie | pièces et billets en euros | compter et rendre la monnaie | centimes, jusqu'à 250 €, rendre sur 50 / 100 € |
 | Problèmes | petites histoires (ajout, retrait) | écart, multiplication, partage | deux étapes, partage, « combien de boîtes », prix |
+
+## Lecture : 13 jeux
+
+Le sélecteur **Maths / Lecture** de l'accueil affiche les jeux de la matière choisie.
+
+| Jeu | CP | CE1 | CE2 |
+| --- | --- | --- | --- |
+| Les lettres | majuscules ↔ minuscules (b, d, p, q…), alphabet | | |
+| Les syllabes | assembler (m + a), première syllabe, compter les syllabes | | |
+| Les sons | entendre ou, on, an, in, oi, ch, o | écrire eau, ain, en, oi, m devant b et p, lettres muettes | |
+| Mot et image | lire un mot, trouver l'image ; trouver le mot bien écrit | repérer le mot bien écrit | |
+| Phrases | comprendre une ou deux phrases (images) | choisir la phrase dans le bon ordre | |
+| Un, une, des | | un/une, le/la/l', pluriels en s, x, aux | |
+| Histoires | | lire un court texte et répondre | textes plus longs, questions de déduction |
+| Le dictionnaire | | ordre alphabétique | 2e et 3e lettre |
+| Homophones | | | a/à, et/est, son/sont, on/ont, ces/ses |
+| Conjugaison | | | présent, imparfait, futur |
+| Les accords | | | accorder l'adjectif |
+| Nature des mots | | | nom, verbe, adjectif |
+| Synonymes, contraires | | | le sens des mots |
+
+Les consignes peuvent être lues à voix haute, sans jamais lire la réponse ni le texte à déchiffrer.
 
 ## Comment ça marche
 
