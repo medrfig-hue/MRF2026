@@ -40,6 +40,18 @@ Le sélecteur **Maths / Lecture** de l'accueil affiche les jeux de la matière c
 
 Les consignes peuvent être lues à voix haute, sans jamais lire la réponse ni le texte à déchiffrer.
 
+## Fiches à imprimer (PDF)
+
+Le dossier [`fiches/`](fiches/) contient une fiche par niveau et par volet : `cp-maths.pdf`, `cp-lecture.pdf`, … `cm1-lecture.pdf`. Chacune propose deux pages d'exercices, une page de petits problèmes (maths) ou de textes à comprendre (lecture), puis un corrigé pour les parents. L'accueil du jeu donne le lien vers les fiches du niveau choisi.
+
+Pour fabriquer une autre série (autres nombres, autres mots), avec Node.js et `pip install reportlab` :
+
+```
+python3 tools/fiches.py --serie 2
+```
+
+Les mots, phrases et histoires viennent du jeu lui-même (`tools/donnees.js` les lit dans `index.html`). Police : [Andika](https://software.sil.org/andika/) (SIL Open Font License, voir `tools/fonts/OFL.txt`).
+
 ## Comment ça marche
 
 - 10 questions par partie. Une étoile quand la réponse est trouvée du premier coup.
