@@ -1,42 +1,42 @@
 # Le Cahier des Nombres
 
-Jeu de maths et de lecture pour enfants de 6 à 8 ans (programme **CP**, **CE1** et **CE2**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
+Jeu de maths et de lecture pour enfants de 6 à 10 ans (programme **CP**, **CE1**, **CE2** et **CM1**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
 
 ## Maths : 11 jeux
 
-| Jeu | CP | CE1 | CE2 |
-| --- | --- | --- | --- |
-| Compter | objets et boîtes de 10, jusqu'à 20 | jusqu'à 60 | objets en rangées (multiplication) |
-| Additions | jusqu'à 20, puis dizaines | jusqu'à 100, avec retenue | jusqu'à 1000, aide « opération posée » |
-| Soustractions | objets barrés, jusqu'à 20 | jusqu'à 100 | jusqu'à 1000, aide « opération posée » |
-| Aller à 10 / 100 / 1000 | compléments à 10 et 20 | à la dizaine et à 100 | à 100, à la centaine et à 1000 |
-| Le crocodile | comparer `<` `>` `=` jusqu'à 100 | jusqu'à 1000 | jusqu'à 10 000, produits |
-| Dizaines / Centaines / Milliers | barres de 10 et cubes | plaques, barres, cubes | milliers, chiffre des centaines… |
-| Le train | suites de nombres | de 2 en 2, 5, 10, 100, à rebours | de 25, 50, 250, 1000, + 9, + 11 |
-| Doubles et moitiés | doubles jusqu'à 10 | jusqu'à 100 | jusqu'à 1000 |
-| Groupes / Tables / Diviser | compter des paquets | tables de 2, 3, 4, 5, 10 | tables de 2 à 9, × 10, × 100, 43 × 4, division exacte |
-| La monnaie | pièces et billets en euros | compter et rendre la monnaie | centimes, jusqu'à 250 €, rendre sur 50 / 100 € |
-| Problèmes | petites histoires (ajout, retrait) | écart, multiplication, partage | deux étapes, partage, « combien de boîtes », prix |
+| Jeu | CP | CE1 | CE2 | CM1 |
+| --- | --- | --- | --- | --- |
+| Compter | objets et boîtes de 10, jusqu'à 20 | jusqu'à 60 | objets en rangées (multiplication) | fractions (bandes, fraction d'une quantité) |
+| Additions | jusqu'à 20, puis dizaines | jusqu'à 100, avec retenue | jusqu'à 1000, aide « opération posée » | jusqu'à 100 000, décimaux |
+| Soustractions | objets barrés, jusqu'à 20 | jusqu'à 100 | jusqu'à 1000, aide « opération posée » | jusqu'à 100 000, décimaux |
+| Aller à 10 / 100 / 1000 | compléments à 10 et 20 | à la dizaine et à 100 | à 100, à la centaine et à 1000 | à 10 000, au millier, à 1 (décimaux) |
+| Le crocodile | comparer `<` `>` `=` jusqu'à 100 | jusqu'à 1000 | jusqu'à 999 999, décimaux (3,5 et 3,45), fractions |
+| Dizaines / Centaines / Milliers | barres de 10 et cubes | plaques, barres, cubes | milliers, chiffre des centaines… | nombres en lettres, chiffre des dixièmes… |
+| Le train | suites de nombres | de 2 en 2, 5, 10, 100, à rebours | de 25, 50, 250, 1000, + 9, + 11 | de 1 000, 10 000, 0,1, 0,25… |
+| Doubles et moitiés | doubles jusqu'à 10 | jusqu'à 100 | jusqu'à 1000 | moitiés décimales, tiers, quarts |
+| Groupes / Tables / Diviser | compter des paquets | tables de 2, 3, 4, 5, 10 | tables de 2 à 9, × 10, × 100, 43 × 4, division exacte | 234 × 6, 23 × 14, division avec reste |
+| La monnaie | pièces et billets en euros | compter et rendre la monnaie | centimes, jusqu'à 250 €, rendre sur 50 / 100 € | mesures : longueurs, masses, contenances, durées |
+| Problèmes | petites histoires (ajout, retrait) | écart, multiplication, partage | deux étapes, partage, « combien de boîtes », prix | reste d'une division, fractions, périmètre |
 
-## Lecture : 13 jeux
+## Lecture et français : 13 jeux
 
 Le sélecteur **Maths / Lecture** de l'accueil affiche les jeux de la matière choisie.
 
-| Jeu | CP | CE1 | CE2 |
-| --- | --- | --- | --- |
-| Les lettres | majuscules ↔ minuscules (b, d, p, q…), alphabet | | |
-| Les syllabes | assembler (m + a), première syllabe, compter les syllabes | | |
-| Les sons | entendre ou, on, an, in, oi, ch, o | écrire eau, ain, en, oi, m devant b et p, lettres muettes | |
-| Mot et image | lire un mot, trouver l'image ; trouver le mot bien écrit | repérer le mot bien écrit | |
-| Phrases | comprendre une ou deux phrases (images) | choisir la phrase dans le bon ordre | |
-| Un, une, des | | un/une, le/la/l', pluriels en s, x, aux | |
-| Histoires | | lire un court texte et répondre | textes plus longs, questions de déduction |
-| Le dictionnaire | | ordre alphabétique | 2e et 3e lettre |
-| Homophones | | | a/à, et/est, son/sont, on/ont, ces/ses |
-| Conjugaison | | | présent, imparfait, futur |
-| Les accords | | | accorder l'adjectif |
-| Nature des mots | | | nom, verbe, adjectif |
-| Synonymes, contraires | | | le sens des mots |
+| Jeu | CP | CE1 | CE2 | CM1 |
+| --- | --- | --- | --- | --- |
+| Les lettres | majuscules ↔ minuscules (b, d, p, q…), alphabet | | | |
+| Les syllabes | assembler (m + a), première syllabe, compter les syllabes | | | |
+| Les sons | entendre ou, on, an, in, oi, ch, o | écrire eau, ain, en, oi, m devant b et p, lettres muettes | | |
+| Mot et image | lire un mot, trouver l'image ; trouver le mot bien écrit | repérer le mot bien écrit | | |
+| Phrases | comprendre une ou deux phrases (images) | choisir la phrase dans le bon ordre | | |
+| Un, une, des | | un/une, le/la/l', pluriels en s, x, aux | | |
+| Histoires | | lire un court texte et répondre | textes plus longs, questions de déduction | textes longs, déductions (horaires, causes) |
+| Le dictionnaire | | ordre alphabétique | 2e et 3e lettre | |
+| Homophones | | | a/à, et/est, son/sont, on/ont, ces/ses | ou/où, ce/se, c'est/s'est |
+| Conjugaison | | | présent, imparfait, futur | passé composé, verbes irréguliers |
+| Les accords | | | accorder l'adjectif | participe passé avec être |
+| Nature des mots | | | nom, verbe, adjectif | déterminant, pronom |
+| Synonymes, contraires | | | le sens des mots | préfixes, familles de mots |
 
 Les consignes peuvent être lues à voix haute, sans jamais lire la réponse ni le texte à déchiffrer.
 
