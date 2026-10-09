@@ -198,6 +198,13 @@ button:focus-visible, input:focus-visible { outline: 4px solid var(--pencil); ou
 .key { border: 0; background: var(--paper); border: 3px solid var(--line-strong); border-radius: 16px; font-family: var(--display); font-weight: 800; font-size: 1.9rem; padding: 6px 0; box-shadow: 0 4px 0 var(--line-strong); }
 .key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line-strong); }
 .key.del { font-size: 1.3rem; color: var(--oops); }
+.key.ok.wide { grid-column: 1 / -1; padding: 10px 0; }
+.frac { justify-self: center; display: inline-grid; vertical-align: middle; text-align: center; line-height: 1.05; font-size: .8em; }
+.frac b:first-child { border-bottom: 3px solid currentColor; padding: 0 .15em; }
+.fbar { display: grid; width: min(320px, 100%); height: 56px; border: 3px solid var(--ink); border-radius: 8px; overflow: hidden; }
+.fbar span { border-right: 2px solid var(--ink); background: var(--card); }
+.fbar span:last-child { border-right: 0; }
+.fbar span.on { background: var(--pencil); }
 .key.ok { background: var(--leaf); border-color: var(--leaf); color: #fff; box-shadow: 0 4px 0 #1f6e44; font-size: 1.3rem; }
 
 .bubble { display: flex; gap: 12px; align-items: center; min-height: 64px; }
@@ -262,7 +269,7 @@ td.num { text-align: right; }
     <div class="top">
       <div class="brand">
         <h1>Le Cahier des <span id="brandWord">Nombres</span></h1>
-        <span class="tag">Maths et lecture · CP · CE1 · CE2</span>
+        <span class="tag">Maths et lecture · CP · CE1 · CE2 · CM1</span>
       </div>
       <button class="star-pill" id="homeStars" type="button" title="Voir mon album">
         <span class="s">★</span><span id="starTotal">0</span>
@@ -283,6 +290,7 @@ td.num { text-align: right; }
           <button type="button" data-level="cp" id="lvlCp">CP</button>
           <button type="button" data-level="ce1" id="lvlCe1">CE1</button>
           <button type="button" data-level="ce2" id="lvlCe2">CE2</button>
+          <button type="button" data-level="cm1" id="lvlCm1">CM1</button>
         </div>
         <div class="toggles">
           <button type="button" class="chip" id="soundToggle">🔔 Sons</button>
@@ -444,7 +452,7 @@ function say(text) {
   if (!canSpeak || !text) return;
   try {
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(String(text).replace(/<[^>]+>/g, ' '));
     u.lang = 'fr-FR'; u.rate = 0.9;
     const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
     if (v) u.voice = v;
@@ -728,7 +736,7 @@ const fmt = n => n >= 1000 ? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') :
 function posee(a, b, op) {
   const A = String(a), B = String(b), n = Math.max(A.length, B.length);
   const cells = s => s.padStart(n, ' ').split('').map(c => `<td>${c.trim()}</td>`).join('');
-  const head = ['m', 'c', 'd', 'u'].slice(-n).map(c => `<td>${c}</td>`).join('');
+  const head = ['cm', 'dm', 'm', 'c', 'd', 'u'].slice(-n).map(c => `<td>${c}</td>`).join('');
   return `<table class="posee"><tr class="cols"><td></td>${head}</tr><tr><td></td>${cells(A)}</tr><tr><td>${op}</td>${cells(B)}</tr><tr class="res"><td></td>${cells('')}</tr></table>`;
 }
 const cents = pieces => pieces.map(v => `<span class="coin ${v < 10 ? 'cu' : 'au'}"><b>${v}</b><small>c</small></span>`).join('');
@@ -926,6 +934,260 @@ GEN2.problemes = (L, d) => {
   else if (k === 'paquets') { const a = rand(3, 9), b = rand(3, 10); text = `On range ${a * b} œufs dans des boîtes de ${a}. Combien de boîtes remplit-on ?`; ans = b; explain = `${b} × ${a} = ${a * b}, donc il faut ${b} boîtes.`; hint = `Combien de fois ${a} dans ${a * b} ? Cherche dans la table de ${a}.`; }
   else if (k === 'etapes') { const a = rand(40, 150), b = rand(10, 60), c = rand(5, a - 5); text = `${N} a ${a} ${o}. ${P} en gagne ${b}, puis en perd ${c}. Combien de ${o} a-t-${p} à la fin ?`; ans = a + b - c; explain = `${a} + ${b} = ${a + b}, puis ${a + b} − ${c} = ${ans}`; hint = 'Fais le calcul en deux étapes : d\'abord ce qui est gagné, ensuite ce qui est perdu.'; }
   else { const n = rand(2, 6), price = rand(3, 15), pay = Math.ceil(n * price / 10) * 10 + pick([10, 20]); text = `${N} achète ${n} livres à ${price} € chacun. ${P} paie avec ${pay} €. Combien d'euros lui rend-on ?`; ans = pay - n * price; explain = `${n} × ${price} = ${n * price} €, puis ${pay} − ${n * price} = ${ans} €`; hint = 'Deux étapes : calcule d\'abord le prix total, puis la monnaie rendue.'; }
+  return { label: 'Problème', prompt: text, story: true, speak: text, visual: '', answer: ans, input: 'keypad', hint, explain };
+};
+
+/* ================= Niveau CM1 (maths) =================
+   Grands nombres jusqu'à 999 999, fractions, décimaux, division avec reste, mesures.
+   Les réponses décimales sont des chaînes « 3,5 » (decStr) et la question porte decimal: true
+   pour afficher la touche virgule. */
+const decStr = n => String(Math.round(n * 1000) / 1000).replace('.', ',');
+const fmtN = n => { const [i, f] = decStr(n).split(','); return fmt(Number(i)) + (f ? ',' + f : ''); };
+const showDec = v => fmtN(Number(String(v).replace(',', '.')));
+const fracHTML = (a, b) => `<span class="frac"><b>${a}</b><b>${b}</b></span>`;
+const showFrac = v => { const [a, b] = String(v).split('/'); return fracHTML(a, b); };
+const ORD = { 2: ['demi', 'demis'], 3: ['tiers', 'tiers'], 4: ['quart', 'quarts'] };
+const fracWords = (a, b) => {
+  const w = ORD[b] || [`${['', '', '', '', '', 'cinqu', 'six', 'sept', 'huit', 'neuv', 'dix'][b]}ième`, `${['', '', '', '', '', 'cinqu', 'six', 'sept', 'huit', 'neuv', 'dix'][b]}ièmes`];
+  return `${a === 1 ? 'un' : a} ${a > 1 ? w[1] : w[0]}`;
+};
+const fbar = (k, n) => `<div class="fbar" style="grid-template-columns:repeat(${n},1fr)">${Array.from({ length: n }, (_, i) => `<span class="${i < k ? 'on' : ''}"></span>`).join('')}</div>`;
+
+// Nombres en lettres (orthographe rectifiée de 1990 : traits d'union partout).
+const UN = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize'];
+const TENS = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante' };
+function w99(n, last) {
+  if (n < 17) return UN[n];
+  if (n < 20) return 'dix-' + UN[n - 10];
+  const t = Math.floor(n / 10), u = n % 10;
+  if (t === 7) return 'soixante-' + (u === 1 ? 'et-onze' : w99(10 + u));
+  if (t === 8) return u ? 'quatre-vingt-' + UN[u] : 'quatre-vingt' + (last ? 's' : '');
+  if (t === 9) return 'quatre-vingt-' + w99(10 + u);
+  return TENS[t] + (u === 0 ? '' : u === 1 ? '-et-un' : '-' + UN[u]);
+}
+function w999(n, last) {
+  const c = Math.floor(n / 100), r = n % 100;
+  let s = c === 0 ? '' : c === 1 ? 'cent' : UN[c] + '-cent' + (r === 0 && last ? 's' : '');
+  if (r) s += (s ? '-' : '') + w99(r, last);
+  return s;
+}
+function inWords(n) {
+  if (n === 0) return 'zéro';
+  const m = Math.floor(n / 1000), r = n % 1000;
+  const head = m === 0 ? '' : m === 1 ? 'mille' : w999(m, false) + '-mille';
+  return head + (r ? (head ? '-' : '') + w999(r, true) : '');
+}
+const GEN3 = {};
+
+GEN3.compter = (L, d) => {
+  if (d < 2) {
+    const n = d === 0 ? pick([2, 3, 4]) : rand(5, 10), k = rand(1, n - 1), ans = `${k}/${n}`;
+    return {
+      label: 'Fractions', prompt: 'Quelle fraction de la bande est coloriée ?', speak: 'Quelle fraction de la bande est coloriée ?', visual: fbar(k, n),
+      answer: ans, input: 'choices', choices: withAnswer(ans, shuffle([`${n - k}/${n}`, `${n}/${k}`, `${k}/${n + 1}`, `${k + 1}/${n}`, `${k}/${n - 1}`].filter(f => !/\/[01]$/.test(f)))),
+      display: showFrac, hint: 'En bas, on écrit en combien de parts égales la bande est coupée. En haut, combien de parts sont coloriées.',
+      explain: `${k} part${k > 1 ? 's' : ''} coloriée${k > 1 ? 's' : ''} sur ${n} : ${fracWords(k, n)}.`
+    };
+  }
+  const n = pick([2, 3, 4, 5, 10]), k = rand(1, n - 1), Q = n * rand(2, 12), ans = Q / n * k;
+  return {
+    label: 'Fraction d\'une quantité', prompt: `${fracHTML(k, n)} de ${Q} = ${BLANK}`, speak: `Combien font ${fracWords(k, n)} de ${Q} ?`, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, shuffle([Q / n, Q - ans, ans + Q / n, ans - 1, ans + 2].filter(v => v > 0))),
+    hint: `Partage d'abord ${Q} en ${n} parts égales, puis prends ${k} part${k > 1 ? 's' : ''}.`, explain: `${Q} : ${n} = ${Q / n}, puis ${Q / n} × ${k} = ${ans}.`
+  };
+};
+
+GEN3.addition = (L, d) => {
+  if (d === 2) {
+    const a = rand(11, 999) / 10, b = rand(11, 99) / 10, s = a + b;
+    return {
+      label: 'Addition de décimaux', prompt: `${fmtN(a)} + ${fmtN(b)} = ${BLANK}`, speak: `${decStr(a)} plus ${decStr(b)}, ça fait combien ?`, visual: '',
+      answer: decStr(s), decimal: true, input: 'keypad', hint: 'Pose l\'addition en alignant les virgules : les dixièmes sous les dixièmes.', explain: `${fmtN(a)} + ${fmtN(b)} = ${fmtN(s)}`
+    };
+  }
+  const a = d === 0 ? rand(1000, 8999) : rand(10000, 89999), b = d === 0 ? rand(150, 999) : rand(1200, 9999), s = a + b;
+  return {
+    label: 'Addition', prompt: `${fmt(a)} + ${fmt(b)} = ${BLANK}`, speak: `${a} plus ${b}, ça fait combien ?`, visual: '',
+    answer: s, input: 'keypad', hint: 'Pose l\'addition : unités sous les unités, et n\'oublie pas les retenues.', hintVisual: posee(a, b, '+'), explain: `${fmt(a)} + ${fmt(b)} = ${fmt(s)}`
+  };
+};
+
+GEN3.soustraction = (L, d) => {
+  if (d === 2) {
+    const a = rand(50, 999) / 10, b = rand(11, Math.round(a * 10) - 5) / 10, r = a - b;
+    return {
+      label: 'Soustraction de décimaux', prompt: `${fmtN(a)} − ${fmtN(b)} = ${BLANK}`, speak: `${decStr(a)} moins ${decStr(b)}, ça fait combien ?`, visual: '',
+      answer: decStr(r), decimal: true, input: 'keypad', hint: 'Pose la soustraction en alignant les virgules.', explain: `${fmtN(a)} − ${fmtN(b)} = ${fmtN(r)}`
+    };
+  }
+  const a = d === 0 ? rand(2000, 9999) : rand(20000, 99999), b = d === 0 ? rand(150, 1999) : rand(1500, a - 1000), r = a - b;
+  return {
+    label: 'Soustraction', prompt: `${fmt(a)} − ${fmt(b)} = ${BLANK}`, speak: `${a} moins ${b}, ça fait combien ?`, visual: '',
+    answer: r, input: 'keypad', hint: `Pose la soustraction. Pour vérifier : ${b} + ta réponse doit donner ${a}.`, hintVisual: posee(a, b, '−'), explain: `${fmt(a)} − ${fmt(b)} = ${fmt(r)}`
+  };
+};
+
+GEN3.complement = (L, d) => {
+  if (d === 2) {
+    const a = Math.random() < .5 ? rand(1, 9) / 10 : rand(1, 99) / 100;
+    return {
+      label: 'Pour aller à 1', prompt: `${fmtN(a)} + ${BLANK} = 1`, speak: `Combien faut-il ajouter à ${decStr(a)} pour avoir 1 ?`, visual: '',
+      answer: decStr(1 - a), decimal: true, input: 'keypad', hint: '1, c\'est 10 dixièmes ou 100 centièmes. Combien en manque-t-il ?', explain: `${fmtN(a)} + ${fmtN(1 - a)} = 1`
+    };
+  }
+  const a = d === 0 ? pick([rand(1, 99) * 100, rand(1001, 9999)]) : rand(1001, 89999), t = d === 0 ? 10000 : Math.ceil(a / 1000) * 1000 + (a % 1000 === 0 ? 1000 : 0);
+  return {
+    label: 'Pour aller à ' + fmt(t), prompt: `${fmt(a)} + ${BLANK} = ${fmt(t)}`, speak: `Combien faut-il ajouter à ${a} pour avoir ${t} ?`, visual: '',
+    answer: t - a, input: 'keypad', hint: 'Fais des bonds : jusqu\'à la dizaine, puis la centaine, puis le millier.', explain: `${fmt(a)} + ${fmt(t - a)} = ${fmt(t)}`
+  };
+};
+
+GEN3.comparer = (L, d) => {
+  let A, B, va, vb;
+  if (d === 0) {
+    va = rand(10000, 999999);
+    const s = String(va), j = rand(0, s.length - 2);
+    vb = Math.random() < .1 ? va : Math.random() < .5 ? Number(s.slice(0, j) + s[j + 1] + s[j] + s.slice(j + 2)) : Math.random() < .5 ? va + pick([-10000, -1000, 1000, 10000]) : rand(10000, 999999);
+    A = fmt(va); B = fmt(vb);
+  } else if (d === 1) {
+    const i = rand(0, 20), t = rand(2, 9);
+    va = i + t / 10;
+    const kind = rand(0, 2);
+    if (kind === 0) { vb = i + (t - 1) / 10 + rand(1, 9) / 100; B = fmtN(vb); } // 3,5 et 3,45 : le piège des « grands » chiffres
+    else if (kind === 1) { vb = va; B = fmtN(va) + '0'; } // 2,5 = 2,50
+    else { vb = i + rand(1, 9) / 10; B = fmtN(vb); }
+    A = fmtN(va);
+  } else {
+    const n = pick([3, 4, 5, 6, 8, 10]);
+    if (Math.random() < .5) { const a = rand(1, 2 * n - 1); va = a / n; vb = 1; A = fracHTML(a, n); B = '1'; }
+    else { const a = rand(1, n - 1), b = rand(1, n - 1); va = a / n; vb = b / n; A = fracHTML(a, n); B = fracHTML(b, n); }
+  }
+  if (Math.random() < .5) { [va, vb] = [vb, va]; [A, B] = [B, A]; }
+  const ans = va < vb - 1e-9 ? '<' : va > vb + 1e-9 ? '>' : '=';
+  return {
+    label: 'Comparer', prompt: `${A} ${BLANK} ${B}`, speak: 'Quel signe faut-il mettre entre ces deux nombres ?', visual: '', answer: ans, input: 'choices', symbols: true,
+    choices: [['<', 'plus petit'], ['=', 'égal'], ['>', 'plus grand']],
+    hint: d === 0 ? 'Compte d\'abord les chiffres, puis compare de gauche à droite. 🐊' : d === 1 ? 'Compare la partie entière, puis les dixièmes, puis les centièmes. Un nombre avec plus de chiffres après la virgule n\'est pas forcément plus grand ! 🐊' : 'Même dénominateur : compare les numérateurs. Une fraction est plus grande que 1 si le numérateur dépasse le dénominateur. 🐊',
+    explain: `${A} ${escapeSym(ans)} ${B}`
+  };
+};
+
+const PLACES_N = [['unités', 0], ['dizaines', 1], ['centaines', 2], ['unités de mille', 3], ['dizaines de mille', 4], ['centaines de mille', 5]];
+GEN3.dizaines = (L, d) => {
+  if (d === 0) {
+    const n = rand(2, 999) * 1000 + pick([0, rand(1, 999), rand(1, 9) * 100, rand(1, 99)]);
+    const m = Math.floor(n / 1000), r = n % 1000;
+    const alt = [m * 100 + r, m * 10000 + r, m * 1000 + Math.floor(r / 10), n + 10000, n - 1000].filter(v => v > 0 && v < 1e6 && v !== n);
+    return {
+      label: 'Grands nombres', prompt: `Quel nombre s'écrit « ${inWords(n)} » ?`, story: true, speak: `Quel nombre s'écrit ${inWords(n).replace(/-/g, ' ')} ?`, visual: '',
+      answer: n, input: 'choices', choices: withAnswer(n, shuffle(alt)), display: fmt,
+      hint: 'Repère le mot « mille » : ce qui est avant donne la classe des milliers, ce qui est après donne la classe des unités (3 chiffres).', explain: `« ${inWords(n)} » s'écrit ${fmt(n)}.`
+    };
+  }
+  if (d === 1) {
+    const n = rand(100000, 999999), [name, pos] = pick(PLACES_N.slice(1)), digits = String(n).split('').map(Number), dig = Math.floor(n / 10 ** pos) % 10;
+    const ch = new Set([dig, ...digits]); while (ch.size < 4) ch.add(rand(0, 9));
+    return {
+      label: 'Grands nombres', prompt: `Dans <b>${fmt(n)}</b>, quel est le chiffre des ${name} ?`, speak: `Dans ${n}, quel est le chiffre des ${name} ?`, read: true, visual: '',
+      answer: dig, input: 'choices', choices: withAnswer(dig, shuffle([...ch])),
+      hint: 'De droite à gauche : unités, dizaines, centaines, puis unités de mille, dizaines de mille, centaines de mille.', explain: `${fmt(n)} : le chiffre des ${name} est ${dig}.`
+    };
+  }
+  const n = rand(101, 9999) / 100, [name, k] = pick([['dixièmes', 1], ['centièmes', 2], ['unités', 0], ['dizaines', -1]]);
+  const s = n.toFixed(2), dig = k === -1 ? Math.floor(n / 10) % 10 : k === 0 ? Math.floor(n) % 10 : Number(s.split('.')[1][k - 1]);
+  const ch = new Set([dig, ...s.replace('.', '').split('').map(Number)]); while (ch.size < 4) ch.add(rand(0, 9));
+  return {
+    label: 'Nombres décimaux', prompt: `Dans <b>${s.replace('.', ',')}</b>, quel est le chiffre des ${name} ?`, speak: `Dans ${s.replace('.', ',')}, quel est le chiffre des ${name} ?`, read: true, visual: '',
+    answer: dig, input: 'choices', choices: withAnswer(dig, shuffle([...ch])),
+    hint: 'Juste après la virgule : les dixièmes, puis les centièmes. Juste avant : les unités, puis les dizaines.', explain: `${s.replace('.', ',')} : le chiffre des ${name} est ${dig}.`
+  };
+};
+
+GEN3.suite = (L, d) => {
+  const step = [pick([1000, 10000, -1000, 5000]), pick([0.1, 0.5, 0.25, -0.1]), pick([0.01, -0.5, 25000, 0.2])][d];
+  let start = Math.abs(step) >= 1000 ? rand(1, 60) * Math.abs(step) + (Math.abs(step) === 1000 ? rand(0, 999) : 0) : rand(0, 40) * Math.abs(step) + (Math.abs(step) < .1 ? rand(0, 5) : 0);
+  if (step < 0) start = Math.max(start, -4 * step);
+  const seq = Array.from({ length: 5 }, (_, i) => Math.round((start + i * step) * 1000) / 1000);
+  const miss = rand(1, 4), ans = seq[miss];
+  const wag = seq.map((v, i) => `<span class="wagon${i === 0 ? ' loco' : ''}">${i === miss ? BLANK : fmtN(v)}</span>`).join('');
+  const st = fmtN(Math.abs(step)), word = step > 0 ? `on avance de ${st} en ${st}` : `on recule de ${st} en ${st}`;
+  const near = [ans + step, ans - step, ans + step / 10, ans + 1, ans - step * 10].map(v => Math.round(v * 1000) / 1000).filter(v => v >= 0 && v !== ans).map(decStr);
+  return {
+    label: 'Le train des nombres', prompt: `<div class="train">${wag}</div>`, speak: 'Quel nombre manque dans le train ?', visual: '',
+    answer: decStr(ans), input: 'choices', choices: withAnswer(decStr(ans), near), display: showDec,
+    hint: `Regarde deux wagons qui se suivent : ${word}.`, explain: `Dans ce train, ${word}. Il manquait ${fmtN(ans)}.`
+  };
+};
+
+GEN3.doubles = (L, d) => {
+  if (d === 0) {
+    const n = pick([rand(11, 99) * 25, rand(101, 4999)]);
+    return Math.random() < .5
+      ? { label: 'Double', prompt: `Le double de ${fmt(n)}, c'est ${BLANK}`, speak: `Quel est le double de ${n} ?`, visual: '', answer: n * 2, input: 'keypad', hint: 'Double les milliers, puis les centaines, puis le reste, et ajoute.', explain: `${fmt(n)} + ${fmt(n)} = ${fmt(n * 2)}` }
+      : { label: 'Moitié', prompt: `La moitié de ${fmt(n * 2)}, c'est ${BLANK}`, speak: `Quelle est la moitié de ${n * 2} ?`, visual: '', answer: n, input: 'keypad', hint: 'Coupe le nombre en morceaux faciles et prends la moitié de chacun.', explain: `${fmt(n)} + ${fmt(n)} = ${fmt(n * 2)}` };
+  }
+  if (d === 1) {
+    const n = rand(3, 99) * 2 + 1;
+    return { label: 'Moitié', prompt: `La moitié de ${n}, c'est ${BLANK}`, speak: `Quelle est la moitié de ${n} ?`, visual: '', answer: decStr(n / 2), decimal: true, input: 'keypad',
+      hint: `${n} est impair : sa moitié tombe entre deux nombres. La moitié de 1, c'est 0,5.`, explain: `${fmtN(n / 2)} + ${fmtN(n / 2)} = ${n}` };
+  }
+  const [name, k] = pick([['le quart', 4], ['le tiers', 3], ['le cinquième', 5], ['le dixième', 10]]), n = k * rand(3, 30);
+  return { label: cap(name.split(' ')[1]), prompt: `${cap(name)} de ${n}, c'est ${BLANK}`, speak: `Combien fait ${name} de ${n} ?`, visual: '', answer: n / k, input: 'keypad',
+    hint: `Partage ${n} en ${k} parts égales.${k === 4 ? ' Le quart, c\'est la moitié de la moitié.' : ''}`, explain: `${n} : ${k} = ${n / k}` };
+};
+
+GEN3.multiplier = (L, d) => {
+  if (d === 0) {
+    if (Math.random() < .5) { const t = rand(3, 9), k = rand(3, 10); return { label: 'Tables', prompt: `${k} × ${t} = ${BLANK}`, speak: `${k} fois ${t}, ça fait combien ?`, visual: '', answer: k * t, input: 'keypad', hint: `Pars d'un résultat connu : ${k - 1} × ${t} = ${(k - 1) * t}.`, explain: `${k} × ${t} = ${k * t}` }; }
+    const a = rand(2, 999), m = pick([10, 100, 1000]);
+    return { label: 'Multiplier par ' + fmt(m), prompt: `${a} × ${fmt(m)} = ${BLANK}`, speak: `${a} fois ${m}, ça fait combien ?`, visual: '', answer: a * m, input: 'keypad', hint: `Chaque chiffre prend une valeur ${m === 10 ? 'dix' : m === 100 ? 'cent' : 'mille'} fois plus grande : on ajoute ${m === 10 ? 'un zéro' : m === 100 ? 'deux zéros' : 'trois zéros'}.`, explain: `${a} × ${fmt(m)} = ${fmt(a * m)}` };
+  }
+  if (d === 1) {
+    if (Math.random() < .5) { const a = rand(102, 899), b = rand(3, 9); return { label: 'Multiplication', prompt: `${a} × ${b} = ${BLANK}`, speak: `${a} fois ${b}, ça fait combien ?`, visual: '', answer: a * b, input: 'keypad', hint: 'Pose la multiplication : multiplie les unités, puis les dizaines, puis les centaines, avec les retenues.', explain: `${a} × ${b} = ${fmt(a * b)}` }; }
+    const a = rand(12, 49), b = rand(11, 25), u = b % 10, dz = b - u;
+    return { label: 'Multiplication', prompt: `${a} × ${b} = ${BLANK}`, speak: `${a} fois ${b}, ça fait combien ?`, visual: '', answer: a * b, input: 'keypad', hint: `Découpe ${b} en ${dz} + ${u} : calcule ${a} × ${dz}, puis ${a} × ${u}, et ajoute.`, explain: `${a} × ${dz} = ${a * dz} et ${a} × ${u} = ${a * u}, donc ${a} × ${b} = ${fmt(a * b)}` };
+  }
+  const b = rand(3, 9), q = rand(4, 25), r = rand(1, b - 1), a = b * q + r, askQ = Math.random() < .5;
+  return {
+    label: 'Division avec reste', prompt: askQ ? `${a} = ${b} × ${BLANK} + ${r}` : `${a} = ${b} × ${q} + ${BLANK}`, speak: askQ ? `Dans ${a}, combien de fois ${b} ? Il reste ${r}.` : `Quel est le reste quand on divise ${a} par ${b} ?`, visual: '',
+    answer: askQ ? q : r, input: 'keypad', hint: `Cherche le plus grand multiple de ${b} qui ne dépasse pas ${a}. Le reste est toujours plus petit que ${b}.`,
+    explain: `${b} × ${q} = ${b * q}, et ${b * q} + ${r} = ${a}. Quotient ${q}, reste ${r}.`
+  };
+};
+
+const UNITS = [['m', 'cm', 100], ['km', 'm', 1000], ['m', 'mm', 1000], ['cm', 'mm', 10], ['kg', 'g', 1000], ['L', 'cL', 100], ['L', 'mL', 1000], ['h', 'min', 60], ['min', 's', 60]];
+const MEMO = 'Rappel : 1 km = 1 000 m, 1 m = 100 cm, 1 cm = 10 mm, 1 kg = 1 000 g, 1 L = 100 cL, 1 h = 60 min, 1 min = 60 s.';
+GEN3.monnaie = (L, d) => {
+  const [big, small, f] = pick(UNITS);
+  if (d === 0) {
+    const n = rand(2, 9);
+    return { label: 'Les mesures', prompt: `${n} ${big} = ${BLANK} ${small}`, speak: `${n} ${big}, combien de ${small} ?`, visual: '', answer: n * f, input: 'keypad', hint: `1 ${big} = ${fmt(f)} ${small}.`, explain: `${n} × ${fmt(f)} = ${fmt(n * f)}, donc ${n} ${big} = ${fmt(n * f)} ${small}.` };
+  }
+  if (d === 1) {
+    if (big === 'h' || big === 'min') { const a = rand(1, 3), b = rand(1, 11) * 5; return { label: 'Les durées', prompt: `${a} ${big} ${b} ${small} = ${BLANK} ${small}`, speak: `${a} ${big} et ${b} ${small}, combien de ${small} en tout ?`, visual: '', answer: a * 60 + b, input: 'keypad', hint: `1 ${big} = 60 ${small}. Convertis les ${big}, puis ajoute.`, explain: `${a} × 60 + ${b} = ${a * 60 + b} ${small}.` }; }
+    const n = rand(2, 12);
+    return { label: 'Les mesures', prompt: `${fmt(n * f)} ${small} = ${BLANK} ${big}`, speak: `${n * f} ${small}, combien de ${big} ?`, visual: '', answer: n, input: 'keypad', hint: MEMO, explain: `${fmt(n * f)} : ${fmt(f)} = ${n}, donc ${fmt(n * f)} ${small} = ${n} ${big}.` };
+  }
+  const [B, S, F] = pick(UNITS.filter(u => u[2] !== 60)), half = rand(1, 9) + pick([0.5, 0.25, 0.1, 0.2]), v = Math.round(half * F * 1000) / 1000;
+  if (!Number.isInteger(v)) return GEN3.monnaie(L, 1);
+  return Math.random() < .5
+    ? { label: 'Les mesures', prompt: `${fmtN(half)} ${B} = ${BLANK} ${S}`, speak: `${decStr(half)} ${B}, combien de ${S} ?`, visual: '', answer: v, input: 'keypad', hint: MEMO, explain: `${fmtN(half)} × ${fmt(F)} = ${fmt(v)}, donc ${fmtN(half)} ${B} = ${fmt(v)} ${S}.` }
+    : { label: 'Les mesures', prompt: `${fmt(v)} ${S} = ${BLANK} ${B}`, speak: `${v} ${S}, combien de ${B} ?`, visual: '', answer: decStr(half), decimal: true, input: 'keypad', hint: MEMO, explain: `${fmt(v)} : ${fmt(F)} = ${fmtN(half)}, donc ${fmt(v)} ${S} = ${fmtN(half)} ${B}.` };
+};
+
+GEN3.problemes = (L, d) => {
+  const [[N, p], [M]] = shuffle(KIDS), P = cap(p);
+  const kinds = [['manque', 'fois', 'etapes'], ['reste', 'boites', 'fraction'], ['perimetre', 'achats', 'fraction', 'reste']][d];
+  const k = pick(kinds);
+  let text, ans, explain, hint;
+  if (k === 'manque') { const price = rand(150, 600), has = rand(50, price - 20); text = `${N} veut acheter un vélo à ${price} €. ${P} a déjà économisé ${has} €. Combien d'euros lui manque-t-il ?`; ans = price - has; explain = `${price} − ${has} = ${ans}`; hint = 'Cherche ce qu\'il faut ajouter à ses économies pour atteindre le prix.'; }
+  else if (k === 'fois') { const a = rand(12, 45), b = rand(12, 30); text = `Un théâtre a ${a} rangées de ${b} fauteuils. Combien de fauteuils y a-t-il en tout ?`; ans = a * b; explain = `${a} × ${b} = ${ans}`; hint = 'Le même nombre de fauteuils dans chaque rangée : c\'est une multiplication.'; }
+  else if (k === 'etapes') { const a = rand(200, 800), b = rand(50, 300), c = rand(20, a - 50); text = `Une bibliothèque a ${a} livres. Elle en achète ${b}, puis en donne ${c} à une école. Combien de livres a-t-elle maintenant ?`; ans = a + b - c; explain = `${a} + ${b} − ${c} = ${ans}`; hint = 'Fais le calcul en deux étapes : ce qui arrive, puis ce qui part.'; }
+  else if (k === 'reste') { const b = rand(4, 9), q = rand(5, 15), r = rand(1, b - 1); text = `On range ${b * q + r} œufs dans des boîtes de ${b}. Combien d'œufs restent en dehors des boîtes pleines ?`; ans = r; explain = `${b} × ${q} = ${b * q} et il reste ${r} œuf${r > 1 ? 's' : ''}.`; hint = `Cherche combien de boîtes pleines on peut faire, puis ce qui reste.`; }
+  else if (k === 'boites') { const b = rand(4, 9), q = rand(5, 15), r = rand(1, b - 1); text = `${N} doit ranger ${b * q + r} billes dans des sacs de ${b}. Combien de sacs pleins peut-${p} remplir ?`; ans = q; explain = `${b * q + r} = ${b} × ${q} + ${r} : ${q} sacs pleins, il reste ${r} bille${r > 1 ? 's' : ''}.`; hint = `C'est une division : combien de fois ${b} dans ${b * q + r} ?`; }
+  else if (k === 'fraction') { const n = pick([2, 3, 4, 5]), Q = n * rand(3, 12); text = `${N} a ${Q} images. ${P} en donne ${['', '', 'la moitié', 'le tiers', 'le quart', 'le cinquième'][n]} à ${M}. Combien d'images donne-t-${p} ?`; ans = Q / n; explain = `${Q} : ${n} = ${ans}`; hint = `Partage ${Q} en ${n} parts égales.`; }
+  else if (k === 'perimetre') { const a = rand(8, 40), b = rand(5, a - 1); text = `Un jardin rectangulaire mesure ${a} m de long et ${b} m de large. Quelle longueur de grillage faut-il pour en faire le tour ?`; ans = 2 * (a + b); explain = `${a} + ${b} + ${a} + ${b} = ${ans} m`; hint = 'Faire le tour, c\'est calculer le périmètre : on ajoute les quatre côtés.'; }
+  else { const n1 = rand(2, 6), p1 = rand(2, 9), n2 = rand(2, 5), p2 = rand(3, 12); text = `${N} achète ${n1} cahiers à ${p1} € et ${n2} livres à ${p2} €. Combien paie-t-${p} en tout ?`; ans = n1 * p1 + n2 * p2; explain = `${n1} × ${p1} = ${n1 * p1}, ${n2} × ${p2} = ${n2 * p2}, puis ${n1 * p1} + ${n2 * p2} = ${ans} €`; hint = 'Calcule d\'abord le prix des cahiers, puis celui des livres, et ajoute.'; }
   return { label: 'Problème', prompt: text, story: true, speak: text, visual: '', answer: ans, input: 'keypad', hint, explain };
 };
 
@@ -1316,10 +1578,21 @@ const STORIES = [
       text: `${N} adore les livres. Chaque ${day}, ${p} va à la bibliothèque avec ${poss} ${rel}. Cette semaine, ${p} a emprunté un livre sur ${theme}. ${P} l'a lu en ${n} jours, car l'histoire était passionnante.`,
       qs: [[`Où va ${N} chaque ${day} ?`, 'à la bibliothèque', ['à la bibliothèque', 'à la piscine', 'au cinéma', 'au marché']], ['De quoi parle le livre ?', theme, THEMES], [`En combien de jours ${N} a-t-${p} lu le livre ?`, `en ${n} jours`, NUMW.map(x => `en ${x} jours`)], [`Pourquoi ${N} a-t-${p} lu le livre si vite ?`, 'L\'histoire était passionnante.', ['L\'histoire était passionnante.', 'Le livre était très court.', 'La maîtresse l\'a demandé.', `${P} était malade.`]]]
     };
+  },
+  () => {
+    const [[N, p], [M, p2]] = shuffle(KIDS), day = pick(DAYS), expo = pick(['les volcans', 'l\'espace', 'le corps humain', 'les robots']), craft = pick(['une fusée à eau', 'un petit robot', 'un volcan en argile', 'une boussole']);
+    return {
+      text: `Le ${day}, la classe de ${N} part en sortie au musée des sciences. Le car doit partir à huit heures, mais ${M} arrive avec dix minutes de retard : ${p2} avait oublié son pique-nique et a dû retourner chez ${p2 === 'il' ? 'lui' : 'elle'}. Le car part dès son arrivée. Au musée, les élèves découvrent une exposition sur ${expo}. ${N} préfère l'atelier où l'on fabrique ${craft}.`,
+      qs: [[`Pourquoi ${M} arrive-t-${p2} en retard ?`, 'Pour aller chercher son pique-nique.', ['Pour aller chercher son pique-nique.', 'Parce que le car était en panne.', 'Parce qu\'il pleuvait.', 'Pour aller chercher son manteau.']],
+        ['À quelle heure le car part-il vraiment ?', 'à huit heures dix', ['à huit heures dix', 'à huit heures', 'à neuf heures', 'à sept heures cinquante']],
+        ['Sur quoi est l\'exposition ?', expo, ['les volcans', 'l\'espace', 'le corps humain', 'les robots']],
+        [`Quel atelier ${N} préfère-t-${p} ?`, `Fabriquer ${craft}.`, ['une fusée à eau', 'un petit robot', 'un volcan en argile', 'une boussole'].map(c => `Fabriquer ${c}.`)]]
+    };
   }
 ];
 GEN['l-comprendre'] = (L, d) => {
-  const set = L === 'ce2' && d > 0 ? STORIES.slice(2) : L === 'ce2' ? STORIES : STORIES.slice(0, 2);
+  // STORIES[4] (sortie au musée, question de déduction) est réservée au CM1.
+  const set = L === 'cm1' ? STORIES.slice(2) : L === 'ce2' && d > 0 ? STORIES.slice(2, 4) : L === 'ce2' ? STORIES.slice(0, 4) : STORIES.slice(0, 2);
   const st = pick(set)(), [q, ans, pool] = pick(st.qs);
   return {
     label: 'Lire une histoire', prompt: `<div class="text">${st.text}</div><div class="question">${q}</div>`, speak: q, read: true, story: true, long: true, visual: '',
@@ -1356,9 +1629,15 @@ const HOMO = {
   'et/est': [['Le ciel ___ bleu.', 'est'], ['Paul ___ Zoé jouent.', 'et'], ['La soupe ___ chaude.', 'est'], ['J\'aime les pommes ___ les poires.', 'et'], ['Mon chien ___ gentil.', 'est'], ['Il mange ___ il boit.', 'et']],
   'son/sont': [['Les enfants ___ dans la cour.', 'sont'], ['Léa range ___ cartable.', 'son'], ['Mes amis ___ gentils.', 'sont'], ['Tom promène ___ chien.', 'son'], ['Ils ___ partis tôt.', 'sont'], ['Elle cherche ___ crayon.', 'son']],
   'on/ont': [['Ils ___ un vélo rouge.', 'ont'], ['___ va au cinéma.', 'On'], ['Les chats ___ faim.', 'ont'], ['Demain, ___ part en vacances.', 'on'], ['Elles ___ fini leurs devoirs.', 'ont'], ['___ joue dans le jardin.', 'On']],
+  'ou/où': [['Tu veux du lait ___ du jus ?', 'ou'], ['___ habites-tu ?', 'Où'], ['Je ne sais pas ___ est mon sac.', 'où'], ['Il viendra lundi ___ mardi.', 'ou'], ['La ville ___ je suis né est petite.', 'où'], ['Prends un crayon ___ un stylo.', 'ou']],
+  'ce/se': [['___ chien est très gentil.', 'Ce'], ['Les enfants ___ lavent les mains.', 'se'], ['Il ___ promène dans le parc.', 'se'], ['J\'aime ___ livre.', 'ce'], ['Elle ___ coiffe devant le miroir.', 'se'], ['___ matin, il fait froid.', 'Ce']],
+  "c'est/s'est": [['___ mon meilleur ami.', "C'est"], ['Il ___ trompé de route.', "s'est"], ['Elle ___ réveillée tôt.', "s'est"], ['___ l\'heure de partir.', "C'est"], ['Mon frère ___ fait mal au genou.', "s'est"], ['Regarde, ___ un arc-en-ciel !', "c'est"]],
   'ces/ses': [['Léa a perdu ___ gants.', 'ses'], ['Regarde ___ beaux nuages !', 'ces'], ['Tom range ___ jouets.', 'ses'], ['___ fleurs sentent bon.', 'Ces'], ['Le chat lèche ___ pattes.', 'ses'], ['J\'adore ___ chansons-là.', 'ces']]
 };
 const HOMO_HINT = {
+  'ou/où': 'Si on peut dire « ou bien », on écrit ou. Si on parle d\'un lieu ou d\'un moment, on écrit où.',
+  'ce/se': 'Ce se place devant un nom (ce chien). Se se place devant un verbe (il se lave) : on peut dire « je me lave ».',
+  "c'est/s'est": 'C\'est = « cela est ». S\'est est suivi d\'un verbe au participe passé : on peut dire « je me suis… ».',
   'a/à': 'Remplace par « avait » : si la phrase marche, on écrit a, sinon à.',
   'et/est': 'Remplace par « était » : si la phrase marche, on écrit est. Si on peut dire « et puis », on écrit et.',
   'son/sont': 'Remplace par « étaient » : si la phrase marche, on écrit sont. Si on peut dire « mon », on écrit son.',
@@ -1366,7 +1645,9 @@ const HOMO_HINT = {
   'ces/ses': 'Si on peut dire « les siens » ou « les siennes », on écrit ses. Si on montre quelque chose, on écrit ces.'
 };
 GEN['l-homophones'] = (L, d) => {
-  const keys = [['a/à', 'et/est'], ['son/sont', 'on/ont'], Object.keys(HOMO)][Math.min(d, 2)];
+  const CM1H = ['ou/où', 'ce/se', "c'est/s'est"];
+  const keys = L === 'cm1' ? [CM1H.slice(0, 2), ["c'est/s'est", 'ces/ses', 'son/sont', 'on/ont'], Object.keys(HOMO)][Math.min(d, 2)]
+    : [['a/à', 'et/est'], ['son/sont', 'on/ont'], Object.keys(HOMO).filter(k => !CM1H.includes(k))][Math.min(d, 2)];
   const k = pick(keys), [s, ans] = pick(HOMO[k]);
   const opts = k.split('/').map(o => s.startsWith('___') ? cap(o) : o);
   return {
@@ -1383,8 +1664,25 @@ const IRREG = {
   aller: { pr: 'vais vas va allons allez vont', im: 'allais allais allait allions alliez allaient', fu: 'irai iras ira irons irez iront' },
   faire: { pr: 'fais fais fait faisons faites font', im: 'faisais faisais faisait faisions faisiez faisaient', fu: 'ferai feras fera ferons ferez feront' }
 };
+const IRREG2 = {
+  venir: { pr: 'viens viens vient venons venez viennent', im: 'venais venais venait venions veniez venaient', fu: 'viendrai viendras viendra viendrons viendrez viendront' },
+  pouvoir: { pr: 'peux peux peut pouvons pouvez peuvent', im: 'pouvais pouvais pouvait pouvions pouviez pouvaient', fu: 'pourrai pourras pourra pourrons pourrez pourront' },
+  voir: { pr: 'vois vois voit voyons voyez voient', im: 'voyais voyais voyait voyions voyiez voyaient', fu: 'verrai verras verra verrons verrez verront' },
+  prendre: { pr: 'prends prends prend prenons prenez prennent', im: 'prenais prenais prenait prenions preniez prenaient', fu: 'prendrai prendras prendra prendrons prendrez prendront' },
+  dire: { pr: 'dis dis dit disons dites disent', im: 'disais disais disait disions disiez disaient', fu: 'dirai diras dira dirons direz diront' }
+};
+Object.assign(IRREG, IRREG2);
+// Participes passés ; les verbes conjugués avec être sont accordés avec le sujet.
+const PP = { finir: 'fini', être: 'été', avoir: 'eu', faire: 'fait', dire: 'dit', prendre: 'pris', voir: 'vu', pouvoir: 'pu', aller: 'allé', venir: 'venu' };
+const WITH_ETRE = ['aller', 'venir'];
 const VERBS1 = ['chanter', 'jouer', 'danser', 'parler', 'regarder', 'marcher', 'dessiner'];
-function conj(v, t) {
+function conj(v, t, fem) {
+  if (t === 'pc') {
+    const pp = PP[v] || v.slice(0, -2) + 'é';
+    if (!WITH_ETRE.includes(v)) return ['ai', 'as', 'a', 'avons', 'avez', 'ont'].map(a => a + ' ' + pp);
+    const e = fem ? 'e' : '';
+    return ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'].map((a, i) => `${a} ${pp}${e}${i >= 3 ? 's' : ''}`);
+  }
   if (IRREG[v]) return IRREG[v][t].split(' ');
   const r = v.slice(0, -2);
   return t === 'pr' ? ['e', 'es', 'e', 'ons', 'ez', 'ent'].map(e => r + e)
@@ -1393,12 +1691,18 @@ function conj(v, t) {
 }
 const TENSES = [['pr', 'présent', 'Aujourd\'hui', 'Au présent, avec nous on finit souvent par -ons, avec vous par -ez, avec ils ou elles par -ent.'],
   ['im', 'imparfait', 'Autrefois', 'À l\'imparfait, les terminaisons sont -ais, -ais, -ait, -ions, -iez, -aient.'],
-  ['fu', 'futur', 'Demain', 'Au futur, on garde l\'infinitif et on ajoute -ai, -as, -a, -ons, -ez, -ont (attention aux verbes être, avoir, aller et faire).']];
+  ['fu', 'futur', 'Demain', 'Au futur, on garde l\'infinitif et on ajoute -ai, -as, -a, -ons, -ez, -ont (attention aux verbes être, avoir, aller et faire).'],
+  ['pc', 'passé composé', 'Hier', 'Au passé composé : l\'auxiliaire avoir ou être au présent, puis le participe passé (chanté, fini, pris…). Avec être, le participe s\'accorde avec le sujet.']];
 GEN['l-conjugaison'] = (L, d) => {
-  const [t, tname, when, hint] = TENSES[Math.min(d, 2)];
-  const v = pick([...VERBS1, ...VERBS1, ...Object.keys(IRREG)]), forms = conj(v, t), i = rand(0, 5), ans = forms[i];
-  const [N] = pick(KIDS);
-  const subj = [ /^[aeéèêiou]/.test(ans) ? "j'" : 'je', 'tu', pick(['il', 'elle', N]), 'nous', 'vous', pick(['ils', 'elles', 'les enfants'])][i];
+  const cm1 = L === 'cm1';
+  const [t, tname, when, hint] = cm1 ? TENSES[[0, rand(1, 2), 3][Math.min(d, 2)]] : TENSES[Math.min(d, 2)];
+  const verbs = cm1 ? [...VERBS1, ...Object.keys(IRREG)] : [...VERBS1, ...VERBS1, ...Object.keys(IRREG).filter(v => !IRREG2[v])];
+  const v = pick(verbs), i = rand(0, 5);
+  const [N, np] = pick(KIDS);
+  // Sujets de 3e personne : on les choisit avant de conjuguer, pour accorder le participe avec être.
+  const s3 = pick([['il', false], ['elle', true], [N, np === 'elle']]), s6 = pick([['ils', false], ['elles', true], ['les enfants', false]]);
+  const forms = conj(v, t, i === 2 ? s3[1] : i === 5 ? s6[1] : false), ans = forms[i];
+  const subj = [ /^[aeéèêiou]/.test(ans) ? "j'" : 'je', 'tu', s3[0], 'nous', 'vous', s6[0]][i];
   const sep = subj === "j'" ? '' : ' ';
   return {
     label: 'Conjugaison · ' + tname, prompt: `${when}, ${subj}${sep}${BLANK} <span class="muted">(${v})</span>.`, speak: `Conjugue le verbe ${v} au ${tname}, avec ${subj === "j'" ? 'je' : subj}.`, read: true, story: true, visual: '',
@@ -1409,7 +1713,19 @@ GEN['l-conjugaison'] = (L, d) => {
 /* ---------- CE2 : accorder l'adjectif ---------- */
 const NOUNS_A = [['fleur', 'fleurs', 'f'], ['chat', 'chats', 'm'], ['maison', 'maisons', 'f'], ['ballon', 'ballons', 'm'], ['voiture', 'voitures', 'f'], ['chien', 'chiens', 'm'], ['robe', 'robes', 'f'], ['vélo', 'vélos', 'm'], ['pomme', 'pommes', 'f'], ['livre', 'livres', 'm'], ['table', 'tables', 'f'], ['sac', 'sacs', 'm']];
 const ADJ = ['petit', 'grand', 'joli', 'noir', 'vert', 'lourd', 'gris'];
+const SUBJ_PP = [['Léa', 'f', 's'], ['Tom', 'm', 's'], ['Les filles', 'f', 'p'], ['Les garçons', 'm', 'p'], ['Ma tante', 'f', 's'], ['Mes cousins', 'm', 'p'], ['Mes sœurs', 'f', 'p'], ['Le facteur', 'm', 's']];
 GEN['l-accords'] = (L, d) => {
+  if (L === 'cm1' && (d === 1 || (d === 2 && Math.random() < .5))) {
+    const [S, g, n] = pick(SUBJ_PP), pp = pick(['parti', 'arrivé', 'tombé', 'venu', 'allé', 'resté']);
+    const F = { ms: pp, fs: pp + 'e', mp: pp + 's', fp: pp + 'es' }, ans = F[g + n];
+    return {
+      label: 'Le participe passé', prompt: `${S} ${n === 'p' ? 'sont' : 'est'} ${BLANK} hier.`, speak: `Comment faut-il écrire le participe passé ${pp} ?`, read: true, visual: '',
+      answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(Object.values(F))),
+      hint: 'Avec l\'auxiliaire être, le participe passé s\'accorde avec le sujet, comme un adjectif.',
+      explain: `« ${S} » est ${g === 'f' ? 'féminin' : 'masculin'} ${n === 'p' ? 'pluriel' : 'singulier'} : on écrit « ${ans} ».`
+    };
+  }
+  if (L === 'cm1') d = 2;
   const [sg, pl, g] = pick(NOUNS_A), plural_ = d === 1 || (d === 2 && Math.random() < .5);
   const before = d === 2 && Math.random() < .6, a = before ? pick(['petit', 'grand', 'joli']) : pick(ADJ);
   const F = { ms: a, fs: a + 'e', mp: a.endsWith('s') ? a : a + 's', fp: a + 'es' };
@@ -1425,13 +1741,18 @@ GEN['l-accords'] = (L, d) => {
 };
 
 /* ---------- CE2 : nature des mots ---------- */
+const TAGGED_P = ['Il/p mange/v une/d grosse/a pomme/n', 'Elle/p regarde/v les/d étoiles/n brillantes/a', 'Nous/p préparons/v un/d bon/a repas/n', 'Ils/p jouent/v dans/x le/d grand/a jardin/n', 'Tu/p lis/v une/d longue/a histoire/n', 'Vous/p ouvrez/v cette/d vieille/a boîte/n'];
 const TAGGED = ['Le/d petit/a chat/n dort/v', 'Ma/d sœur/n mange/v une/d pomme/n rouge/a', 'Le/d grand/a chien/n court/v vite/x', 'Les/d oiseaux/n chantent/v fort/x',
   'Tom/n lit/v un/d gros/a livre/n', 'La/d maîtresse/n ouvre/v la/d porte/n', 'Mon/d vélo/n bleu/a roule/v', 'Une/d jolie/a fleur/n pousse/v',
   'Papa/n répare/v la/d vieille/a voiture/n', 'Les/d enfants/n regardent/v un/d film/n drôle/a', 'Le/d bébé/n boit/v du/d lait/n chaud/a', 'Ce/d gentil/a lapin/n saute/v'];
-const CAT = { v: ['le verbe', 'Le verbe change quand on dit « hier » ou « demain ».'], n: ['un nom', 'Le nom désigne une personne, un animal ou une chose. On peut mettre « un », « une » ou « le » devant.'], a: ['un adjectif', 'L\'adjectif dit comment est le nom : sa couleur, sa taille…'] };
+const CAT = { v: ['le verbe', 'Le verbe change quand on dit « hier » ou « demain ».'], n: ['un nom', 'Le nom désigne une personne, un animal ou une chose. On peut mettre « un », « une » ou « le » devant.'],
+  a: ['un adjectif', 'L\'adjectif dit comment est le nom : sa couleur, sa taille…'],
+  d: ['un déterminant', 'Le déterminant est le petit mot placé devant le nom : le, la, un, des, mon, ce…'],
+  p: ['un pronom', 'Le pronom remplace un nom : il, elle, nous, ils…'] };
 GEN['l-nature'] = (L, d) => {
-  const c = ['v', 'n', 'a'][Math.min(d, 2)];
-  const s = pick(TAGGED.filter(x => x.includes('/' + c))).split(' ').map(t => t.split('/'));
+  const c = L === 'cm1' ? [pick(['v', 'n', 'a']), 'd', 'p'][Math.min(d, 2)] : ['v', 'n', 'a'][Math.min(d, 2)];
+  const bank = L === 'cm1' ? TAGGED.concat(TAGGED_P) : TAGGED;
+  const s = pick(bank.filter(x => x.includes('/' + c))).split(' ').map(t => t.split('/'));
   const ans = pick(s.filter(t => t[1] === c))[0];
   return {
     label: 'Nature des mots', prompt: `<div class="text">${s.map(t => t[0]).join(' ')}.</div><div class="question">Quel mot est ${CAT[c][0]} ?</div>`,
@@ -1444,7 +1765,21 @@ GEN['l-nature'] = (L, d) => {
 /* ---------- CE2 : synonymes et contraires ---------- */
 const SYN = [['content', 'joyeux'], ['triste', 'malheureux'], ['commencer', 'débuter'], ['finir', 'terminer'], ['regarder', 'observer'], ['beau', 'joli'], ['crier', 'hurler'], ['gentil', 'aimable'], ['fatigué', 'épuisé'], ['malin', 'rusé'], ['voiture', 'automobile'], ['peur', 'frayeur']];
 const ANT = [['grand', 'petit'], ['chaud', 'froid'], ['jour', 'nuit'], ['ouvrir', 'fermer'], ['monter', 'descendre'], ['rapide', 'lent'], ['plein', 'vide'], ['propre', 'sale'], ['lourd', 'léger'], ['gagner', 'perdre'], ['allumer', 'éteindre'], ['facile', 'difficile'], ['toujours', 'jamais'], ['entrer', 'sortir']];
+const PREF = [['possible', 'impossible'], ['heureux', 'malheureux'], ['faire', 'défaire'], ['lisible', 'illisible'], ['poli', 'impoli'], ['content', 'mécontent'], ['plier', 'déplier'], ['coller', 'décoller'], ['patient', 'impatient'], ['habiller', 'déshabiller'], ['visible', 'invisible'], ['connu', 'inconnu']];
+const FAMILLES = [['terre', 'terrain', ['tirer', 'tarte', 'tour']], ['dent', 'dentiste', ['danse', 'dindon', 'dans']], ['lait', 'laitier', ['laid', 'laine', 'laisser']], ['fleur', 'fleuriste', ['flûte', 'fleuve', 'flotter']],
+  ['mer', 'marin', ['mère', 'merci', 'mardi']], ['froid', 'refroidir', ['fromage', 'frapper', 'front']], ['chant', 'chanteur', ['chat', 'champ', 'chance']], ['peur', 'peureux', ['peu', 'père', 'pluie']],
+  ['neige', 'enneigé', ['nuage', 'nage', 'nez']], ['long', 'longueur', ['loup', 'lent', 'loin']], ['jardin', 'jardinier', ['jaune', 'jarre', 'joue']], ['porte', 'portail', ['pomme', 'poste', 'part']]];
 GEN['l-mots'] = (L, d) => {
+  if (L === 'cm1' && d > 0) {
+    if (d === 1 || Math.random() < .5) {
+      const [a, ans] = pick(PREF), others = shuffle(PREF.filter(x => x[0] !== a).map(x => x[1])).slice(0, 2).concat([a + 's']);
+      return { label: 'Les préfixes', prompt: `Quel mot est le contraire de « <b>${a}</b> » ?`, speak: `Quel est le contraire de ${a} ?`, read: true, story: true, visual: '',
+        answer: ans, input: 'choices', choices: withAnswer(ans, others), hint: 'On peut former un contraire en ajoutant un préfixe au début du mot : in-, im-, il-, mé-, mal-, dé-, dés-.', explain: `${a} → ${ans}` };
+    }
+    const [w, ans, bad] = pick(FAMILLES);
+    return { label: 'Familles de mots', prompt: `Quel mot est de la même famille que « <b>${w}</b> » ?`, speak: `Quel mot est de la même famille que ${w} ?`, read: true, story: true, visual: '',
+      answer: ans, input: 'choices', choices: withAnswer(ans, bad), hint: 'Les mots d\'une même famille partagent un radical et un sens : ils parlent de la même chose.', explain: `« ${w} » et « ${ans} » sont de la même famille.` };
+  }
   const syn = d === 1 || (d === 2 && Math.random() < .5), list = syn ? SYN : ANT;
   const pair = pick(list), [a, ans] = Math.random() < .5 ? pair : [pair[1], pair[0]];
   const others = shuffle(list.filter(p => p !== pair).flat());
@@ -1459,17 +1794,17 @@ GEN['l-mots'] = (L, d) => {
 
 /* ================= Jeux disponibles ================= */
 const ACTS = [
-  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets' } },
-  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions', ce2: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue', ce2: 'Jusqu\'à 1000, opérations posées' } },
-  { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions', ce2: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000, avec retenues' } },
-  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100', ce2: 'Aller à 1000' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100', ce2: 'Compléter à 100 et à 1000' } },
-  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile', ce2: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000', ce2: 'Comparer jusqu\'à 10 000' } },
-  { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines', ce2: 'Milliers' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes', ce2: 'Milliers, centaines, dizaines' } },
-  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train', ce2: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…', ce2: 'De 25, 50, 100, 1000…' } },
-  { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés', ce2: 'Doubles et moitiés' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000' } },
-  { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables', ce2: 'Multiplier, diviser' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10', ce2: 'Tables de 2 à 9, division' } },
-  { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande', ce2: 'La marchande' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie', ce2: 'Euros et centimes' } },
-  { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes', ce2: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager', ce2: 'Problèmes en deux étapes' } }
+  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées', cm1: 'Fractions' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets', cm1: 'Bandes coloriées, fraction d\'une quantité' } },
+  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions', ce2: 'Additions', cm1: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue', ce2: 'Jusqu\'à 1000, opérations posées', cm1: 'Grands nombres et décimaux' } },
+  { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions', ce2: 'Soustractions', cm1: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000, avec retenues', cm1: 'Grands nombres et décimaux' } },
+  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100', ce2: 'Aller à 1000', cm1: 'Compléments' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100', ce2: 'Compléter à 100 et à 1000', cm1: 'À 10 000, au millier, à 1' } },
+  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile', ce2: 'Le crocodile', cm1: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000', ce2: 'Comparer jusqu\'à 10 000', cm1: 'Grands nombres, décimaux, fractions' } },
+  { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines', ce2: 'Milliers', cm1: 'Grands nombres' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes', ce2: 'Milliers, centaines, dizaines', cm1: 'Lire, écrire, chiffres des décimaux' } },
+  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train', ce2: 'Le train', cm1: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…', ce2: 'De 25, 50, 100, 1000…', cm1: 'De 1 000 en 1 000, de 0,1 en 0,1' } },
+  { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés', ce2: 'Doubles et moitiés', cm1: 'Moitiés, tiers, quarts' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000', cm1: 'Moitiés décimales, fractions' } },
+  { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables', ce2: 'Multiplier, diviser', cm1: 'Multiplier, diviser' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10', ce2: 'Tables de 2 à 9, division', cm1: 'Multiplication, division avec reste' } },
+  { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande', ce2: 'La marchande', cm1: 'Les mesures' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie', ce2: 'Euros et centimes', cm1: 'Longueurs, masses, contenances, durées' } },
+  { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes', ce2: 'Problèmes', cm1: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager', ce2: 'Problèmes en deux étapes', cm1: 'Plusieurs étapes, fractions, périmètre' } }
 ];
 const ACTS_LECT = [
   { id: 'l-lettres', ico: '🔤', c: '#ff9f6b', nm: { cp: 'Les lettres' }, ds: { cp: 'Majuscules, minuscules, alphabet' } },
@@ -1478,13 +1813,13 @@ const ACTS_LECT = [
   { id: 'l-motimage', ico: '🖼️', c: '#ffc93c', nm: { cp: 'Mot et image', ce1: 'Le bon mot' }, ds: { cp: 'Lire un mot, trouver l\'image', ce1: 'Repérer le mot bien écrit' } },
   { id: 'l-phrases', ico: '💬', c: '#3fbf7f', nm: { cp: 'Lire des phrases', ce1: 'Phrases en désordre' }, ds: { cp: 'Comprendre une petite phrase', ce1: 'Choisir la phrase bien écrite' } },
   { id: 'l-genre', ico: '👫', c: '#ff7a8a', nm: { ce1: 'Un, une, des' }, ds: { ce1: 'Masculin, féminin, pluriel' } },
-  { id: 'l-comprendre', ico: '📖', c: '#5ccfc0', nm: { ce1: 'Petites histoires', ce2: 'Lire des histoires' }, ds: { ce1: 'Lire un texte et répondre', ce2: 'Comprendre et déduire' } },
+  { id: 'l-comprendre', ico: '📖', c: '#5ccfc0', nm: { ce1: 'Petites histoires', ce2: 'Lire des histoires', cm1: 'Lire et déduire' }, ds: { ce1: 'Lire un texte et répondre', ce2: 'Comprendre et déduire', cm1: 'Textes longs, questions de déduction' } },
   { id: 'l-alpha', ico: '📕', c: '#f78fd0', nm: { ce1: 'Le dictionnaire', ce2: 'Le dictionnaire' }, ds: { ce1: 'Ordre alphabétique', ce2: 'Ordre alphabétique, 2e et 3e lettre' } },
-  { id: 'l-homophones', ico: '🎯', c: '#ff6b5c', nm: { ce2: 'Homophones' }, ds: { ce2: 'a/à, et/est, son/sont, on/ont, ces/ses' } },
-  { id: 'l-conjugaison', ico: '⏳', c: '#8fc75b', nm: { ce2: 'Conjugaison' }, ds: { ce2: 'Présent, imparfait, futur' } },
-  { id: 'l-accords', ico: '🧷', c: '#7e9cff', nm: { ce2: 'Les accords' }, ds: { ce2: 'Accorder l\'adjectif' } },
-  { id: 'l-nature', ico: '🏷️', c: '#ff9f6b', nm: { ce2: 'Nature des mots' }, ds: { ce2: 'Nom, verbe, adjectif' } },
-  { id: 'l-mots', ico: '↔️', c: '#4fb6ff', nm: { ce2: 'Synonymes, contraires' }, ds: { ce2: 'Le sens des mots' } }
+  { id: 'l-homophones', ico: '🎯', c: '#ff6b5c', nm: { ce2: 'Homophones', cm1: 'Homophones' }, ds: { ce2: 'a/à, et/est, son/sont, on/ont, ces/ses', cm1: 'ou/où, ce/se, c\'est/s\'est…' } },
+  { id: 'l-conjugaison', ico: '⏳', c: '#8fc75b', nm: { ce2: 'Conjugaison', cm1: 'Conjugaison' }, ds: { ce2: 'Présent, imparfait, futur', cm1: 'Passé composé, verbes irréguliers' } },
+  { id: 'l-accords', ico: '🧷', c: '#7e9cff', nm: { ce2: 'Les accords', cm1: 'Les accords' }, ds: { ce2: 'Accorder l\'adjectif', cm1: 'Adjectif et participe passé' } },
+  { id: 'l-nature', ico: '🏷️', c: '#ff9f6b', nm: { ce2: 'Nature des mots', cm1: 'Nature des mots' }, ds: { ce2: 'Nom, verbe, adjectif', cm1: 'Déterminant, pronom, nom, verbe' } },
+  { id: 'l-mots', ico: '↔️', c: '#4fb6ff', nm: { ce2: 'Synonymes, contraires', cm1: 'Le sens des mots' }, ds: { ce2: 'Le sens des mots', cm1: 'Préfixes, familles de mots' } }
 ];
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐰', '🐯', '🐨', '🦄'];
 const STICKERS = ['🐶', '🐱', '🐭', '🐹', '🐻', '🐷', '🐮', '🐵', '🐔', '🐧', '🐢', '🐙', '🦀', '🐳', '🦒', '🦓', '🦔', '🦜', '🦩', '🦕', '🦖', '🐲', '🚀', '🏆'];
@@ -1532,7 +1867,7 @@ function nextQuestion() {
   clearTimeout(G.timer);
   if (G.idx >= ROUND) return endGame();
   let q, guard = 0;
-  const gen = (G.level === 'ce2' && GEN2[G.id]) || GEN[G.id];
+  const gen = (G.level === 'cm1' && GEN3[G.id]) || (G.level === 'ce2' && GEN2[G.id]) || GEN[G.id];
   do { q = gen(G.level, G.diff); } while (guard++ < 10 && G.last && q.prompt === G.last);
   G.last = q.prompt;
   G.q = q; G.tries = 0; G.typed = ''; G.locked = false;
@@ -1563,7 +1898,7 @@ function renderAnswer() {
       `<div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" class="key" data-k="${n}">${n}</button>`).join('')}
       <button type="button" class="key del" data-k="del" aria-label="Effacer">⌫</button>
       <button type="button" class="key" data-k="0">0</button>
-      <button type="button" class="key ok" data-k="ok">OK</button></div>`;
+      ${q.decimal ? '<button type="button" class="key" data-k="," aria-label="Virgule">,</button><button type="button" class="key ok wide" data-k="ok">OK</button>' : '<button type="button" class="key ok" data-k="ok">OK</button>'}</div>`;
   }
 }
 
@@ -1587,13 +1922,15 @@ function keyPress(k) {
   sfx.tap();
   if (k === 'del') G.typed = G.typed.slice(0, -1);
   else if (k === 'ok') { if (G.typed !== '') check(G.typed); return; }
-  else if (G.typed.length < 5) G.typed = (G.typed === '0' ? '' : G.typed) + k;
+  else if (k === ',') { if (!G.q.decimal || G.typed.includes(',')) return; G.typed = (G.typed || '0') + ','; }
+  else if (G.typed.length < 7) G.typed = (G.typed === '0' ? '' : G.typed) + k;
   setBlank(G.typed);
 }
 
 function check(value, btn) {
   const q = G.q;
-  const right = String(value) === String(q.answer);
+  // Réponses décimales : « 3,50 » et « 3,5 » sont la même réponse.
+  const right = q.decimal ? decStr(Number(String(value).replace(',', '.'))) === String(q.answer) : String(value) === String(q.answer);
   G.tries++;
   if (right) {
     G.locked = true;
@@ -1682,7 +2019,7 @@ function renderAlbum() {
 }
 function renderParents() {
   const rows = [];
-  ['cp', 'ce1', 'ce2'].forEach(L => ACTS.concat(ACTS_LECT).forEach(a => {
+  ['cp', 'ce1', 'ce2', 'cm1'].forEach(L => ACTS.concat(ACTS_LECT).forEach(a => {
     const st = save.stats[L + ':' + a.id];
     if (!st || !st.played || !a.nm[L]) return;
     const pct = st.asked ? Math.round(st.first / st.asked * 100) : 0;
@@ -1742,6 +2079,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.tagName === 'BUTTON') return; // le bouton gère déjà son clic
   if (/^[0-9]$/.test(e.key)) keyPress(e.key);
   else if (e.key === 'Backspace') keyPress('del');
+  else if (e.key === ',' || e.key === '.') keyPress(',');
   else if (e.key === 'Enter') { if (!$('#nextRow').hidden) nextQuestion(); else keyPress('ok'); }
 });
 if (canSpeak) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {} }
