@@ -30,6 +30,7 @@
   --radius: 22px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* sinon .next-row (display: flex) reste visible */
 html, body { min-height: 100%; }
 body {
   margin: 0;
@@ -169,6 +170,22 @@ button:focus-visible, input:focus-visible { outline: 4px solid var(--pencil); ou
 .bill.b100 { background-color: #8fd19e; }
 .array span { width: 18px; height: 18px; border-radius: 50%; background: var(--margin-red); }
 
+.subjects { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.subject { border: 3px solid var(--line-strong); background: var(--card); border-radius: var(--radius); padding: 12px; font-family: var(--display); font-weight: 800; font-size: 1.35rem; box-shadow: 0 4px 0 var(--line-strong); }
+.subject[aria-pressed=true] { background: var(--ink); border-color: var(--ink); color: #fff; box-shadow: 0 4px 0 #0f1a45; }
+.prompt.read { font-family: var(--body); font-weight: 700; }
+.prompt .letter { font-size: 1.5em; }
+.prompt .text { font-weight: 400; background: var(--paper); border-left: 4px solid var(--margin-red); padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; }
+.prompt .question { font-weight: 700; }
+.prompt .muted { font-weight: 400; font-size: .8em; }
+.son { display: inline-block; padding: 0 .35em; border: 3px solid var(--margin-red); border-radius: 10px; color: var(--margin-red); font-family: var(--body); }
+.bigemo { font-size: 4.5rem; line-height: 1; }
+.wcard { display: grid; justify-items: center; gap: 2px; font-size: 2.4rem; background: var(--paper); border: 2px solid var(--line-strong); border-radius: 14px; padding: 8px 12px; }
+.wcard span { font-family: var(--body); font-weight: 700; font-size: 1.1rem; }
+.choices.read .choice { font-family: var(--body); font-weight: 700; font-size: 1.6rem; overflow-wrap: anywhere; }
+.choices.emo .choice { font-size: 2.6rem; }
+.choices.long { grid-template-columns: 1fr; }
+.choices.long .choice { font-size: 1.2rem; text-align: left; padding-inline: 16px; }
 .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
 .choice { border: 0; background: var(--card); border: 3px solid var(--line-strong); border-radius: 18px; padding: 12px 8px; font-family: var(--display); font-weight: 800; font-size: 2rem; box-shadow: 0 5px 0 var(--line-strong); font-variant-numeric: tabular-nums; display: grid; gap: 0; }
 .choice small { font-family: var(--body); font-weight: 700; font-size: .85rem; color: var(--ink-soft); }
@@ -244,8 +261,8 @@ td.num { text-align: right; }
   <section id="home">
     <div class="top">
       <div class="brand">
-        <h1>Le Cahier des <span>Nombres</span></h1>
-        <span class="tag">Maths CP · CE1 · CE2</span>
+        <h1>Le Cahier des <span id="brandWord">Nombres</span></h1>
+        <span class="tag">Maths et lecture · CP · CE1 · CE2</span>
       </div>
       <button class="star-pill" id="homeStars" type="button" title="Voir mon album">
         <span class="s">★</span><span id="starTotal">0</span>
@@ -272,6 +289,11 @@ td.num { text-align: right; }
           <button type="button" class="chip" id="voiceToggle">🗣️ Lire à voix haute</button>
         </div>
       </div>
+    </div>
+
+    <div class="subjects" role="group" aria-label="Matière">
+      <button type="button" class="subject" data-subject="maths" id="subjMaths"><span aria-hidden="true">🔢</span> Maths</button>
+      <button type="button" class="subject" data-subject="lecture" id="subjLecture"><span aria-hidden="true">📖</span> Lecture</button>
     </div>
 
     <h2 class="section-title" id="greeting">Choisis un jeu</h2>
@@ -386,7 +408,7 @@ function choicesAround(ans, spread = 3, min = 0, extra = []) {
 
 /* ================= Sauvegarde ================= */
 const KEY = 'cahier-des-nombres-v1';
-const defaults = () => ({ name: '', avatar: '🦊', level: 'cp', sound: true, voice: false, stars: 0, stickers: [], stats: {} });
+const defaults = () => ({ name: '', avatar: '🦊', level: 'cp', subject: 'maths', sound: true, voice: false, stars: 0, stickers: [], stats: {} });
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === 'object') return Object.assign(defaults(), s); } catch (e) {}
   return defaults();
@@ -907,6 +929,534 @@ GEN2.problemes = (L, d) => {
   return { label: 'Problème', prompt: text, story: true, speak: text, visual: '', answer: ans, input: 'keypad', hint, explain };
 };
 
+/* ================= Lecture =================
+   Jeux de lecture et de français (CP, CE1, CE2). Même format de question que GEN.
+   « read: true » affiche les réponses dans la police de lecture (Andika). */
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const bigEmo = e => `<div class="bigemo">${e}</div>`;
+const sonTag = s => `<span class="son">${s}</span>`;
+const SAY_SON = { ou: 'ou', on: 'on', an: 'an', in: 'in', oi: 'oi', ch: 'che', au: 'o' };
+// Complète une liste de choix jusqu'à 4 éléments distincts, la bonne réponse comprise.
+function withAnswer(ans, others, n = 4) {
+  const out = [ans];
+  for (const o of others) { if (out.length >= n) break; if (!out.includes(o)) out.push(o); }
+  return shuffle(out);
+}
+
+// mot | emoji | syllabes écrites | sons repérés (ou on an in oi ch au)
+const LEX = `lapin|🐰|la-pin|in
+mouton|🐑|mou-ton|ou on
+canard|🦆|ca-nard|
+tomate|🍅|to-ma-te|
+bateau|⛵|ba-teau|au
+gâteau|🎂|gâ-teau|au
+lune|🌙|lu-ne|
+robot|🤖|ro-bot|
+vélo|🚲|vé-lo|
+banane|🍌|ba-na-ne|
+citron|🍋|ci-tron|on
+cadeau|🎁|ca-deau|au
+chapeau|🎩|cha-peau|ch au
+château|🏰|châ-teau|ch au
+poisson|🐟|pois-son|oi on
+tortue|🐢|tor-tue|
+lion|🦁|li-on|on
+fusée|🚀|fu-sée|
+maison|🏠|mai-son|on
+voiture|🚗|voi-tu-re|oi
+girafe|🦒|gi-ra-fe|
+souris|🐭|sou-ris|ou
+cheval|🐴|che-val|ch
+papillon|🦋|pa-pi-llon|on
+camion|🚚|ca-mion|on
+avion|✈️|a-vion|on
+ballon|🎈|bal-lon|on
+cochon|🐷|co-chon|ch on
+poule|🐔|pou-le|ou
+carotte|🥕|ca-ro-tte|
+pomme|🍎|pom-me|
+dragon|🐉|dra-gon|on
+couronne|👑|cou-ro-nne|ou
+moto|🏍️|mo-to|
+tigre|🐯|ti-gre|
+sapin|🎄|sa-pin|in
+crocodile|🐊|cro-co-di-le|
+étoile|⭐|é-toi-le|oi
+nuage|☁️|nu-a-ge|
+serpent|🐍|ser-pent|an
+requin|🦈|re-quin|in
+baleine|🐳|ba-lei-ne|
+hibou|🦉|hi-bou|ou
+éléphant|🐘|é-lé-phant|an
+chat|🐱|chat|ch
+loup|🐺|loup|ou
+roi|🤴|roi|oi
+pain|🍞|pain|in
+vache|🐄|va-che|ch
+chien|🐶|chien|ch in
+orange|🍊|o-ran-ge|an
+ours|🐻|ours|ou
+oiseau|🐦|oi-seau|oi au
+bouche|👄|bou-che|ou ch
+main|✋|main|in
+tambour|🥁|tam-bour|an ou
+train|🚂|train|in
+fourchette|🍴|four-chet-te|ou ch
+dent|🦷|dent|an
+ciseaux|✂️|ci-seaux|au
+lunettes|👓|lu-net-tes|
+kangourou|🦘|kan-gou-rou|an ou
+escargot|🐌|es-car-got|
+ordinateur|💻|or-di-na-teur|
+télévision|📺|té-lé-vi-sion|on`.split('\n').map(l => { const [w, e, s, o] = l.split('|'); return { w, e, syl: s.split('-'), sons: o ? o.split(' ') : [] }; });
+const byWord = Object.fromEntries(LEX.map(x => [x.w, x]));
+const SONS = ['ou', 'on', 'an', 'in', 'oi', 'ch', 'au'];
+// Mots dont le nombre de syllabes à l'oral est discuté (diérèse) : exclus du comptage.
+const NO_COUNT = ['lion', 'camion', 'avion', 'télévision'];
+
+// Fautes d'orthographe plausibles, pour fabriquer des mots « presque justes ».
+const MUT = [['b', 'd'], ['d', 'b'], ['p', 'q'], ['p', 'b'], ['m', 'n'], ['n', 'm'], ['on', 'an'], ['an', 'on'], ['ou', 'o'], ['oi', 'io'], ['in', 'ain'], ['ch', 'j'], ['t', 'd'], ['f', 'v'], ['v', 'f'], ['l', 'r'], ['r', 'l'], ['eau', 'o'], ['au', 'o'], ['ss', 's'], ['ll', 'l'], ['tt', 't'], ['u', 'ou'], ['c', 'q']];
+function misspell(w, n = 3) {
+  const out = new Set(); let guard = 0;
+  while (out.size < n && guard++ < 400) {
+    let v;
+    if (Math.random() < .25 && w.length > 3) { const i = rand(1, w.length - 2); v = w.slice(0, i) + w[i + 1] + w[i] + w.slice(i + 2); }
+    else { const [a, b] = pick(MUT); const idx = w.indexOf(a); if (idx < 0) continue; v = w.slice(0, idx) + b + w.slice(idx + a.length); }
+    if (v !== w) out.add(v);
+  }
+  return [...out];
+}
+
+/* ---------- CP : les lettres ---------- */
+const CONF = ['bdpq', 'mnuh', 'ftlij', 'aoec', 'szx', 'vwy', 'gqy', 'rnm', 'kh'];
+const ALPHA = 'abcdefghijklmnopqrstuvwxyz';
+GEN['l-lettres'] = (L, d) => {
+  if (d === 2) {
+    const i = rand(0, 24), a = ALPHA[i + 1];
+    return {
+      label: "L'alphabet", prompt: `Quelle lettre vient juste après <b>${ALPHA[i]}</b> ?`, speak: `Quelle lettre vient juste après la lettre ${ALPHA[i]} ?`, read: true, visual: '',
+      answer: a, input: 'choices', choices: withAnswer(a, shuffle([ALPHA[i], ALPHA[Math.min(25, i + 2)], ...shuffle(ALPHA.split(''))])),
+      hint: 'Récite l\'alphabet dans ta tête : a, b, c, d…', explain: `Après ${ALPHA[i]}, il y a ${a}.`
+    };
+  }
+  const t = pick(ALPHA.split('')), grp = (CONF.find(g => g.includes(t)) || '').split('');
+  const lows = withAnswer(t, [...shuffle(grp), ...shuffle(ALPHA.split(''))]);
+  const up = d === 0;
+  return {
+    label: 'Les lettres', prompt: up ? `Trouve <b class="letter">${t.toUpperCase()}</b> en minuscule` : `Trouve <b class="letter">${t}</b> en majuscule`,
+    speak: `Trouve la lettre ${t} en ${up ? 'minuscule' : 'majuscule'}.`, read: true, visual: '',
+    answer: up ? t : t.toUpperCase(), input: 'choices', choices: up ? lows : lows.map(c => c.toUpperCase()),
+    hint: 'bdpq'.includes(t) ? 'Attention : b, d, p et q se ressemblent mais ne regardent pas du même côté.' : 'Regarde bien la forme de chaque lettre.',
+    explain: `${t.toUpperCase()} et ${t}, c'est la même lettre.`
+  };
+};
+
+/* ---------- CP : les syllabes ---------- */
+GEN['l-syllabes'] = (L, d) => {
+  if (d === 0) {
+    const C = ['b', 'd', 'f', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'ch'], V = ['a', 'i', 'o', 'u', 'é', 'e'];
+    const SIM = { b: 'd', d: 'b', p: 'b', m: 'n', n: 'm', f: 'v', v: 'f', t: 'd', l: 'r', r: 'l', s: 'ch', ch: 's' };
+    const c = pick(C), v = pick(V), ans = c + v;
+    return {
+      label: 'Les syllabes', prompt: `<b>${c}</b> + <b>${v}</b> = ${BLANK}`, read: true, speak: 'Quelle syllabe forment ces lettres ?', visual: '',
+      answer: ans, input: 'choices', choices: withAnswer(ans, [v + c, SIM[c] + v, c + pick(V.filter(x => x !== v)), pick(C) + pick(V), pick(C) + pick(V), pick(C) + pick(V)]),
+      hint: 'Fais chanter la première lettre, puis glisse vers la voyelle.', explain: `${c} + ${v} = ${ans}`
+    };
+  }
+  if (d === 1) {
+    const w = pick(LEX.filter(x => x.syl.length >= 2)), ans = w.syl[0];
+    const others = shuffle([w.syl[1], ...LEX.map(x => x.syl[0])]).filter(s => norm(s) !== norm(ans));
+    return {
+      label: 'Les syllabes', prompt: 'Par quelle syllabe commence ce mot ?', speak: `Par quelle syllabe commence le mot ${w.w} ?`, read: true,
+      visual: bigEmo(w.e), answer: ans, input: 'choices', choices: withAnswer(ans, others),
+      hint: 'Dis le mot tout doucement : qu\'entends-tu en premier ?', explain: `${w.w} : ${w.syl.join(' - ')}`
+    };
+  }
+  const w = pick(LEX.filter(x => !NO_COUNT.includes(x.w) && !/e$/.test(x.syl[x.syl.length - 1])));
+  const n = w.syl.length;
+  return {
+    label: 'Compter les syllabes', prompt: `Combien de syllabes dans <b>${w.w}</b> ?`, speak: `Combien de syllabes dans le mot ${w.w} ?`, read: true,
+    visual: bigEmo(w.e), answer: n, input: 'choices', choices: [1, 2, 3, 4],
+    hint: 'Dis le mot en tapant dans tes mains à chaque syllabe.', explain: `${w.syl.join(' - ')} : ${plural(n, 'syllabe')}.`
+  };
+};
+
+/* ---------- Les sons : CP (entendre) et CE1 (écrire) ---------- */
+// [début, graphie, fin, mauvaises graphies, image, règle]
+const GRAPH = [
+  ['gât', 'eau', '', ['o', 'au', 'ot'], '🎂', 'À la fin d\'un mot, le son [o] s\'écrit souvent « eau ».'],
+  ['bat', 'eau', '', ['o', 'au', 'ot'], '⛵', 'À la fin d\'un mot, le son [o] s\'écrit souvent « eau ».'],
+  ['chap', 'eau', '', ['o', 'au', 'ot'], '🎩', 'À la fin d\'un mot, le son [o] s\'écrit souvent « eau ».'],
+  ['ois', 'eau', '', ['o', 'au', 'ot'], '🐦', 'À la fin d\'un mot, le son [o] s\'écrit souvent « eau ».'],
+  ['p', 'ou', 'le', ['o', 'u', 'au'], '🐔', 'Le son [ou] s\'écrit avec deux lettres.'],
+  ['h', 'ib', 'ou', ['ip', 'id', 'iv'], '🦉', 'Écoute bien le son du milieu : b ou p ?'],
+  ['m', 'ai', 'son', ['è', 'é', 'ei'], '🏠', 'Dans ce mot, le son [è] s\'écrit avec deux lettres.'],
+  ['p', 'ain', '', ['in', 'ein', 'un'], '🍞', 'Pense à la famille du mot : la main, le pain, le train…'],
+  ['m', 'ain', '', ['in', 'ein', 'un'], '✋', 'Pense à la famille du mot : la main, le pain, le train…'],
+  ['tr', 'ain', '', ['in', 'ein', 'un'], '🚂', 'Pense à la famille du mot : la main, le pain, le train…'],
+  ['lap', 'in', '', ['ain', 'ein', 'un'], '🐰', 'Le son [in] s\'écrit le plus souvent avec deux lettres simples.'],
+  ['sap', 'in', '', ['ain', 'ein', 'un'], '🎄', 'Le son [in] s\'écrit le plus souvent avec deux lettres simples.'],
+  ['serp', 'en', 't', ['an', 'on', 'in'], '🐍', 'Le son [an] peut s\'écrire « an » ou « en » : il faut le mémoriser.'],
+  ['d', 'en', 't', ['an', 'on', 'in'], '🦷', 'Le son [an] peut s\'écrire « an » ou « en » : il faut le mémoriser.'],
+  ['éléph', 'an', 't', ['en', 'on', 'am'], '🐘', 'Le son [an] peut s\'écrire « an » ou « en » : il faut le mémoriser.'],
+  ['p', 'oi', 'sson', ['oa', 'io', 'ou'], '🐟', 'Le son [wa] s\'écrit avec un o et un i.'],
+  ['r', 'oi', '', ['oa', 'io', 'oie'], '🤴', 'Le son [wa] s\'écrit avec un o et un i.'],
+  ['ét', 'oi', 'le', ['oa', 'io', 'ua'], '⭐', 'Le son [wa] s\'écrit avec un o et un i.'],
+  ['t', 'am', 'bour', ['an', 'en', 'em'], '🥁', 'Devant b et p, on écrit m au lieu de n.'],
+  ['p', 'om', 'pier', ['on', 'an', 'em'], '🧑‍🚒', 'Devant b et p, on écrit m au lieu de n.'],
+  ['j', 'am', 'be', ['an', 'en', 'on'], '🦵', 'Devant b et p, on écrit m au lieu de n.'],
+  ['ch', 'at', '', ['a', 'as', 'ad'], '🐱', 'Une lettre muette se cache à la fin : pense à « chaton ».'],
+  ['lou', 'p', '', ['t', 's', 'd'], '🐺', 'Une lettre muette se cache à la fin du mot.']
+];
+GEN['l-sons'] = (L, d) => {
+  if (L !== 'cp') {
+    const [pre, ans, post, bad, e, rule] = pick(GRAPH);
+    return {
+      label: 'Écrire les sons', prompt: `${pre}${BLANK}${post}`, read: true, speak: `Complète le mot ${pre + ans + post}.`, visual: bigEmo(e),
+      answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(bad)), hint: rule, explain: `On écrit « ${pre + ans + post} ».`
+    };
+  }
+  if (d < 2) {
+    // Pour le son [o] (au, eau), on écarte aussi les mots où il s'écrit « o » : sinon deux réponses seraient justes.
+    const S = pick(SONS), yes = LEX.filter(x => x.sons.includes(S)), no = LEX.filter(x => !x.sons.includes(S) && !(S === 'au' && (/o(?![iun])/.test(x.w) || x.w === 'couronne')));
+    const ans = pick(yes).w;
+    return {
+      label: 'Les sons', prompt: `Dans quel mot entends-tu ${sonTag(S === 'au' ? 'o' : S)} ?`, speak: `Dans quel mot entends-tu le son ${SAY_SON[S]} ?`, read: true, visual: '',
+      answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(no).map(x => x.w)),
+      display: d === 0 ? (w => `${byWord[w].e}<small>${w}</small>`) : null,
+      hint: `Lis chaque mot doucement et écoute s'il contient ${SAY_SON[S] === 'o' ? 'le son [o], écrit au ou eau' : 'le son [' + S + ']'}.`,
+      explain: `On entend ${S === 'au' ? 'o' : S} dans « ${ans} ».`
+    };
+  }
+  let S, words, guard = 0;
+  do { S = pick(SONS); words = shuffle(LEX.filter(x => x.sons.includes(S))).slice(0, 3); }
+  while (guard++ < 50 && (words.length < 3 || SONS.some(o => o !== S && words.every(w => w.sons.includes(o)))));
+  return {
+    label: 'Les sons', prompt: 'Quel son entends-tu dans les trois mots ?', speak: `Quel son entends-tu dans tous ces mots : ${words.map(w => w.w).join(', ')} ?`, read: true,
+    visual: words.map(w => `<div class="wcard">${w.e}<span>${w.w}</span></div>`).join(''),
+    answer: S, input: 'choices', choices: withAnswer(S, shuffle(SONS.filter(o => !words.every(w => w.sons.includes(o))))), display: s => s === 'au' ? 'o' : s,
+    hint: 'Cherche les lettres que les trois mots ont en commun.', explain: `${words.map(w => w.w).join(', ')} : on entend ${S === 'au' ? 'o' : S}.`
+  };
+};
+
+/* ---------- Mot et image ---------- */
+GEN['l-motimage'] = (L, d) => {
+  if (L === 'cp' && d === 0) {
+    const w = pick(LEX);
+    return {
+      label: 'Lis le mot', prompt: `<b>${w.w}</b>`, speak: 'Lis le mot et trouve la bonne image.', read: true, visual: '',
+      answer: w.w, input: 'choices', choices: withAnswer(w.w, shuffle(LEX).map(x => x.w)), display: x => byWord[x].e, emoji: true,
+      hint: 'Lis le mot syllabe par syllabe, puis regarde les images.', explain: `${w.w} : ${w.e}`
+    };
+  }
+  const pool = L === 'cp' ? LEX : LEX.filter(x => x.w.length >= (d === 0 ? 4 : 6));
+  const w = pick(pool);
+  const others = L === 'cp' && d === 1 ? shuffle(LEX.filter(x => Math.abs(x.w.length - w.w.length) <= 1)).map(x => x.w) : misspell(w.w);
+  return {
+    label: L === 'cp' ? 'Mot et image' : 'Le mot bien écrit', prompt: 'Quel est le mot bien écrit ?', speak: 'Quel mot correspond à l\'image ?', read: true,
+    visual: bigEmo(w.e), answer: w.w, input: 'choices', choices: withAnswer(w.w, others),
+    hint: 'Lis chaque mot lettre par lettre : un seul est bien écrit.', explain: `On écrit « ${w.w} ».`
+  };
+};
+
+/* ---------- Phrases : CP (comprendre) et CE1 (remettre en ordre) ---------- */
+const FOODS = [['une banane', '🍌'], ['une pomme', '🍎'], ['une fraise', '🍓'], ['une carotte', '🥕'], ['un gâteau', '🎂'], ['une orange', '🍊'], ['du pain', '🍞'], ['une tomate', '🍅'], ['un citron', '🍋'], ['une poire', '🍐']];
+const PETS = [['chat', '🐱'], ['chien', '🐶'], ['lapin', '🐰'], ['cochon', '🐷'], ['lion', '🦁'], ['cheval', '🐴'], ['loup', '🐺'], ['tigre', '🐯'], ['singe', '🐵']];
+const ACTIONS = ['dort', 'joue avec un ballon', 'mange une pomme', 'court dans le jardin', 'nage dans la mare', 'saute très haut'];
+const SENTS = ['Le chat dort sur le lit', 'Ma sœur lit un livre', 'Les enfants jouent au ballon', 'Papa prépare le repas', 'Le soleil brille dans le ciel',
+  'Nous allons à la piscine', 'Tom range sa chambre', 'La maîtresse écrit au tableau', 'Le chien court dans le jardin', 'Mamie fait un gâteau',
+  'Les oiseaux chantent le matin', 'Je mets mes bottes rouges', 'Léa arrose les fleurs', 'Le train part à midi', 'Mon frère mange une pomme'];
+const PROPER = ['Tom', 'Léa', 'Papa', 'Mamie', 'Je'];
+function sentence(words) {
+  const w = words.map((x, i) => i === 0 || PROPER.includes(x) ? x : x.toLowerCase());
+  return cap(w.join(' ')) + '.';
+}
+GEN['l-phrases'] = (L, d) => {
+  if (L !== 'cp') {
+    const base = pick(SENTS).split(' ').map((x, i) => i === 0 && !PROPER.includes(x) ? x.toLowerCase() : x);
+    const good = sentence(base), bad = new Set(); let guard = 0;
+    while (bad.size < 3 && guard++ < 100) {
+      const v = base.slice(), i = rand(0, v.length - 2), j = d === 2 ? i + 1 : rand(i + 1, v.length - 1);
+      [v[i], v[j]] = [v[j], v[i]];
+      const s = sentence(v); if (s !== good) bad.add(s);
+    }
+    return {
+      label: 'Phrases en désordre', prompt: 'Quelle phrase est bien écrite ?', speak: 'Lis les phrases. Laquelle est bien écrite ?', read: true, long: true, visual: '',
+      answer: good, input: 'choices', choices: withAnswer(good, [...bad]),
+      hint: 'Lis chaque phrase à voix basse : une seule veut dire quelque chose.', explain: `La phrase correcte : « ${good} »`
+    };
+  }
+  const [N] = pick(KIDS);
+  if (d === 0) {
+    const f = rand(0, FOODS.length - 1), verb = pick(['mange', 'achète', 'prend', 'coupe']);
+    const others = shuffle(FOODS.map((_, i) => i).filter(i => i !== f)).map(String);
+    return {
+      label: 'Lire une phrase', prompt: `${N} ${verb} ${FOODS[f][0]}.`, speak: 'Lis la phrase et trouve la bonne image.', read: true, visual: '',
+      answer: String(f), input: 'choices', choices: withAnswer(String(f), others), display: i => FOODS[i][1], emoji: true,
+      hint: 'Lis le dernier mot de la phrase.', explain: `${N} ${verb} ${FOODS[f][0]} ${FOODS[f][1]}.`
+    };
+  }
+  if (d === 1) {
+    const a = rand(0, PETS.length - 1), f = rand(0, FOODS.length - 1);
+    const oa = (a + rand(1, PETS.length - 1)) % PETS.length, of = (f + rand(1, FOODS.length - 1)) % FOODS.length;
+    const ans = `${a}|${f}`;
+    return {
+      label: 'Lire une phrase', prompt: `Le ${PETS[a][0]} mange ${FOODS[f][0]}.`, speak: 'Lis la phrase et trouve la bonne image.', read: true, visual: '',
+      answer: ans, input: 'choices', choices: withAnswer(ans, [`${oa}|${f}`, `${a}|${of}`, `${oa}|${of}`]),
+      display: v => { const [x, y] = v.split('|'); return PETS[x][1] + FOODS[y][1]; }, emoji: true,
+      hint: 'Qui mange ? Et que mange-t-il ? Il faut lire les deux mots.', explain: `Le ${PETS[a][0]} ${PETS[a][1]} mange ${FOODS[f][0]} ${FOODS[f][1]}.`
+    };
+  }
+  const [a1, a2, a3, a4] = shuffle(PETS.map((_, i) => i)), [act1, act2] = shuffle(ACTIONS);
+  return {
+    label: 'Lire deux phrases', prompt: `Le ${PETS[a1][0]} ${act1}. Le ${PETS[a2][0]} ${act2}.<br>Qui ${act1} ?`, speak: 'Lis les phrases et réponds à la question.', read: true, story: true, visual: '',
+    answer: String(a1), input: 'choices', choices: withAnswer(String(a1), [a2, a3, a4].map(String)), display: i => PETS[i][1], emoji: true,
+    hint: 'Cherche dans quelle phrase on parle de cette action.', explain: `C'est le ${PETS[a1][0]} ${PETS[a1][1]} qui ${act1}.`
+  };
+};
+
+/* ---------- CE1 : un, une, le, la, des ---------- */
+// mot | genre | emoji | pluriel
+const NOUNS = `chat|m|🐱|chats
+maison|f|🏠|maisons
+lune|f|🌙|lunes
+voiture|f|🚗|voitures
+ballon|m|🎈|ballons
+pomme|f|🍎|pommes
+étoile|f|⭐|étoiles
+lapin|m|🐰|lapins
+fusée|f|🚀|fusées
+vélo|m|🚲|vélos
+gâteau|m|🎂|gâteaux
+souris|f|🐭|souris
+poule|f|🐔|poules
+girafe|f|🦒|girafes
+tortue|f|🐢|tortues
+avion|m|✈️|avions
+arbre|m|🌳|arbres
+éléphant|m|🐘|éléphants
+oiseau|m|🐦|oiseaux
+orange|f|🍊|oranges
+cheval|m|🐴|chevaux
+bateau|m|⛵|bateaux
+jeu|m|🎲|jeux
+journal|m|📰|journaux
+bijou|m|💍|bijoux
+nez|m|👃|nez
+fleur|f|🌸|fleurs
+cadeau|m|🎁|cadeaux
+hibou|m|🦉|hiboux
+école|f|🏫|écoles`.split('\n').map(l => { const [w, g, e, p] = l.split('|'); return { w, g, e, p }; });
+GEN['l-genre'] = (L, d) => {
+  const n = pick(NOUNS);
+  if (d === 0) {
+    const ans = n.g === 'm' ? 'un' : 'une';
+    return {
+      label: 'Un ou une ?', prompt: `${BLANK} ${n.w}`, speak: 'Faut-il dire un ou une ?', read: true, visual: bigEmo(n.e),
+      answer: ans, input: 'choices', choices: ['un', 'une'],
+      hint: 'Dis les deux à voix basse : « un… » ou « une… » ? Lequel sonne juste ?', explain: `On dit « ${ans} ${n.w} ».`
+    };
+  }
+  if (d === 1) {
+    const ans = /^[aeéèêiou]/.test(n.w) ? "l'" : n.g === 'm' ? 'le' : 'la';
+    return {
+      label: 'Le, la ou l\' ?', prompt: `${BLANK}${ans === "l'" ? '' : ' '}${n.w}`, speak: 'Faut-il dire le, la ou l\' ?', read: true, visual: bigEmo(n.e),
+      answer: ans, input: 'choices', choices: ['le', 'la', "l'"],
+      hint: 'Devant une voyelle, on écrit l\' (avec une apostrophe).', explain: `On écrit « ${ans}${ans === "l'" ? '' : ' '}${n.w} ».`
+    };
+  }
+  const cand = [n.w + 's', n.w + 'x', n.w, n.w.replace(/al$/, 'aux'), n.w + 'es'].filter(v => v !== n.p);
+  return {
+    label: 'Le pluriel', prompt: `${n.g === 'm' ? 'un' : 'une'} ${n.w} → des ${BLANK}`, speak: 'Comment écrit-on ce mot au pluriel ?', read: true, visual: bigEmo(n.e),
+    answer: n.p, input: 'choices', choices: withAnswer(n.p, [...new Set(cand)]),
+    hint: 'Au pluriel, on ajoute souvent un s. Les mots en -eau, -au et -eu prennent un x, les mots en -al font -aux. Attention aux exceptions : bijou, caillou, chou, genou, hibou, joujou, pou.',
+    explain: `Un ${n.w}, des ${n.p}.`
+  };
+};
+
+/* ---------- CE1-CE2 : petites histoires ---------- */
+const PLACES = ['au parc', 'à la plage', 'à la piscine', 'à la ferme', 'au marché', 'à la montagne'];
+const PETNAMES = ['Rex', 'Filou', 'Caramel', 'Biscuit', 'Moustache', 'Pirate'];
+const SNACKS = ['une pomme', 'une crêpe', 'un yaourt', 'une banane', 'un pain au chocolat', 'une poire'];
+const HOURS = ['quatre heures', 'cinq heures', 'six heures', 'midi'];
+const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const DISHES = ['un gâteau au chocolat', 'une tarte aux pommes', 'des crêpes', 'une salade de fruits'];
+const GUESTS = ['leur grand-mère', 'leur cousin', 'la voisine', 'leur oncle'];
+const WEATHER = [['il pleut très fort', 'son imperméable et ses bottes', 'Il pleut.'], ['il neige', 'son bonnet et ses gants', 'Il neige.'], ['il fait très chaud', 'sa casquette', 'Il fait chaud.'], ['il y a beaucoup de vent', 'son gros manteau', 'Il y a du vent.']];
+const SIGHTS = ['un écureuil', 'un camion de pompiers', 'un arc-en-ciel', 'des canards sur l\'étang'];
+const THEMES = ['les dinosaures', 'les planètes', 'les pirates', 'les volcans', 'les chevaux'];
+const RELS = [['son', 'papa'], ['sa', 'maman'], ['son', 'grand-père'], ['sa', 'tante']];
+const NUMW = ['deux', 'trois', 'quatre', 'cinq'];
+const STORIES = [
+  () => {
+    const [[N, p]] = shuffle(KIDS), [pet] = shuffle(PETS.slice(0, 3)), place = pick(PLACES), name = pick(PETNAMES), snack = pick(SNACKS), hour = pick(HOURS);
+    return {
+      text: `${N} va ${place} avec son ${pet[0]} ${name}. Ils jouent au ballon pendant longtemps. À ${hour}, ${N} rentre à la maison et mange ${snack}.`,
+      qs: [[`Où va ${N} ?`, place, PLACES], [`Comment s'appelle le ${pet[0]} de ${N} ?`, name, PETNAMES], [`Que mange ${N} en rentrant ?`, snack, SNACKS], [`À quelle heure ${N} rentre-t-${p} ?`, hour, HOURS]]
+    };
+  },
+  () => {
+    const [[N], [M]] = shuffle(KIDS), day = pick(DAYS), dish = pick(DISHES), guest = pick(GUESTS);
+    return {
+      text: `C'est ${day}. ${N} et ${M} préparent ${dish} pour ${guest}. ${M} casse les œufs pendant que ${N} mélange la pâte. Quand ${guest} arrive, tout est prêt !`,
+      qs: [['Quel jour est-ce ?', day, DAYS], ['Pour qui les enfants cuisinent-ils ?', guest, GUESTS], ['Qui casse les œufs ?', M, KIDS.map(k => k[0]).filter(k => k !== N)], ['Que préparent les enfants ?', dish, DISHES]]
+    };
+  },
+  () => {
+    const [[N, p], [M]] = shuffle(KIDS), w = pick(WEATHER), sight = pick(SIGHTS);
+    return {
+      text: `Ce matin, ${w[0]}. ${N} met ${w[1]} avant de partir à l'école. En chemin, ${p} retrouve ${M}. Les deux amis arrivent en retard, parce qu'ils ont regardé ${sight} pendant dix minutes.`,
+      qs: [['Quel temps fait-il ?', w[2], WEATHER.map(x => x[2])], [`Que met ${N} avant de partir ?`, w[1], WEATHER.map(x => x[1])], ['Pourquoi les amis arrivent-ils en retard ?', `Ils ont regardé ${sight}.`, SIGHTS.map(s => `Ils ont regardé ${s}.`).concat(['Ils se sont perdus.', 'Le bus était en panne.'])], [`Qui ${N} retrouve-t-${p} ?`, M, KIDS.map(k => k[0]).filter(k => k !== N)]]
+    };
+  },
+  () => {
+    const [[N, p]] = shuffle(KIDS), P = cap(p), day = pick(DAYS), [poss, rel] = pick(RELS), theme = pick(THEMES), n = pick(NUMW);
+    return {
+      text: `${N} adore les livres. Chaque ${day}, ${p} va à la bibliothèque avec ${poss} ${rel}. Cette semaine, ${p} a emprunté un livre sur ${theme}. ${P} l'a lu en ${n} jours, car l'histoire était passionnante.`,
+      qs: [[`Où va ${N} chaque ${day} ?`, 'à la bibliothèque', ['à la bibliothèque', 'à la piscine', 'au cinéma', 'au marché']], ['De quoi parle le livre ?', theme, THEMES], [`En combien de jours ${N} a-t-${p} lu le livre ?`, `en ${n} jours`, NUMW.map(x => `en ${x} jours`)], [`Pourquoi ${N} a-t-${p} lu le livre si vite ?`, 'L\'histoire était passionnante.', ['L\'histoire était passionnante.', 'Le livre était très court.', 'La maîtresse l\'a demandé.', `${P} était malade.`]]]
+    };
+  }
+];
+GEN['l-comprendre'] = (L, d) => {
+  const set = L === 'ce2' && d > 0 ? STORIES.slice(2) : L === 'ce2' ? STORIES : STORIES.slice(0, 2);
+  const st = pick(set)(), [q, ans, pool] = pick(st.qs);
+  return {
+    label: 'Lire une histoire', prompt: `<div class="text">${st.text}</div><div class="question">${q}</div>`, speak: q, read: true, story: true, long: true, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(pool)),
+    hint: 'Relis le texte et cherche la phrase qui répond à la question.', explain: `Dans le texte : « ${ans} ».`
+  };
+};
+
+/* ---------- CE1-CE2 : ordre alphabétique ---------- */
+const DICO = LEX.map(x => x.w).concat(['abricot', 'arbre', 'bougie', 'dauphin', 'fenêtre', 'guitare', 'jardin', 'koala', 'livre', 'neige', 'parapluie', 'quille', 'radis', 'usine', 'valise', 'wagon', 'yaourt', 'zèbre', 'pompier', 'poire', 'poivron', 'banc', 'barque']);
+const collate = new Intl.Collator('fr', { sensitivity: 'base' }).compare;
+GEN['l-alpha'] = (L, d) => {
+  const level = L === 'ce2' ? d + 1 : d; // 0 : premières lettres différentes, 1-2 : même début
+  let words;
+  if (level === 0) {
+    const seen = new Set(); words = [];
+    for (const w of shuffle(DICO)) { const k = norm(w[0]); if (!seen.has(k)) { seen.add(k); words.push(w); } if (words.length === 4) break; }
+  } else {
+    const len = level >= 2 ? 2 : 1, groups = {};
+    DICO.forEach(w => { const k = norm(w.slice(0, len)); (groups[k] = groups[k] || []).push(w); });
+    words = shuffle(pick(Object.values(groups).filter(g => g.length >= 4))).slice(0, 4);
+  }
+  const sorted = words.slice().sort(collate), ans = sorted[0];
+  return {
+    label: 'Le dictionnaire', prompt: 'Quel mot vient en premier dans le dictionnaire ?', speak: 'Quel mot vient en premier dans l\'ordre alphabétique ?', read: true, visual: '',
+    answer: ans, input: 'choices', choices: shuffle(words),
+    hint: 'Compare la première lettre. Si elle est pareille, compare la deuxième, puis la troisième.', explain: `Dans l'ordre : ${sorted.join(', ')}.`
+  };
+};
+
+/* ---------- CE2 : homophones ---------- */
+const HOMO = {
+  'a/à': [['Léa ___ un chat.', 'a'], ['Il va ___ l\'école.', 'à'], ['Tom ___ faim.', 'a'], ['Je pense ___ toi.', 'à'], ['Elle ___ perdu son stylo.', 'a'], ['Nous allons ___ la plage.', 'à'], ['Mon frère ___ huit ans.', 'a'], ['C\'est ___ moi de jouer.', 'à']],
+  'et/est': [['Le ciel ___ bleu.', 'est'], ['Paul ___ Zoé jouent.', 'et'], ['La soupe ___ chaude.', 'est'], ['J\'aime les pommes ___ les poires.', 'et'], ['Mon chien ___ gentil.', 'est'], ['Il mange ___ il boit.', 'et']],
+  'son/sont': [['Les enfants ___ dans la cour.', 'sont'], ['Léa range ___ cartable.', 'son'], ['Mes amis ___ gentils.', 'sont'], ['Tom promène ___ chien.', 'son'], ['Ils ___ partis tôt.', 'sont'], ['Elle cherche ___ crayon.', 'son']],
+  'on/ont': [['Ils ___ un vélo rouge.', 'ont'], ['___ va au cinéma.', 'On'], ['Les chats ___ faim.', 'ont'], ['Demain, ___ part en vacances.', 'on'], ['Elles ___ fini leurs devoirs.', 'ont'], ['___ joue dans le jardin.', 'On']],
+  'ces/ses': [['Léa a perdu ___ gants.', 'ses'], ['Regarde ___ beaux nuages !', 'ces'], ['Tom range ___ jouets.', 'ses'], ['___ fleurs sentent bon.', 'Ces'], ['Le chat lèche ___ pattes.', 'ses'], ['J\'adore ___ chansons-là.', 'ces']]
+};
+const HOMO_HINT = {
+  'a/à': 'Remplace par « avait » : si la phrase marche, on écrit a, sinon à.',
+  'et/est': 'Remplace par « était » : si la phrase marche, on écrit est. Si on peut dire « et puis », on écrit et.',
+  'son/sont': 'Remplace par « étaient » : si la phrase marche, on écrit sont. Si on peut dire « mon », on écrit son.',
+  'on/ont': 'Remplace par « il » : si ça marche, on écrit on. Si on peut dire « avaient », on écrit ont.',
+  'ces/ses': 'Si on peut dire « les siens » ou « les siennes », on écrit ses. Si on montre quelque chose, on écrit ces.'
+};
+GEN['l-homophones'] = (L, d) => {
+  const keys = [['a/à', 'et/est'], ['son/sont', 'on/ont'], Object.keys(HOMO)][Math.min(d, 2)];
+  const k = pick(keys), [s, ans] = pick(HOMO[k]);
+  const opts = k.split('/').map(o => s.startsWith('___') ? cap(o) : o);
+  return {
+    label: 'Homophones ' + k, prompt: s.replace('___', BLANK), speak: `Faut-il écrire ${k.replace('/', ' ou ')} ?`, read: true, visual: '',
+    answer: ans, input: 'choices', choices: opts, hint: HOMO_HINT[k], explain: `On écrit : ${s.replace('___', ans)}`
+  };
+};
+
+/* ---------- CE2 : conjugaison ---------- */
+const IRREG = {
+  finir: { pr: 'finis finis finit finissons finissez finissent', im: 'finissais finissais finissait finissions finissiez finissaient', fu: 'finirai finiras finira finirons finirez finiront' },
+  être: { pr: 'suis es est sommes êtes sont', im: 'étais étais était étions étiez étaient', fu: 'serai seras sera serons serez seront' },
+  avoir: { pr: 'ai as a avons avez ont', im: 'avais avais avait avions aviez avaient', fu: 'aurai auras aura aurons aurez auront' },
+  aller: { pr: 'vais vas va allons allez vont', im: 'allais allais allait allions alliez allaient', fu: 'irai iras ira irons irez iront' },
+  faire: { pr: 'fais fais fait faisons faites font', im: 'faisais faisais faisait faisions faisiez faisaient', fu: 'ferai feras fera ferons ferez feront' }
+};
+const VERBS1 = ['chanter', 'jouer', 'danser', 'parler', 'regarder', 'marcher', 'dessiner'];
+function conj(v, t) {
+  if (IRREG[v]) return IRREG[v][t].split(' ');
+  const r = v.slice(0, -2);
+  return t === 'pr' ? ['e', 'es', 'e', 'ons', 'ez', 'ent'].map(e => r + e)
+    : t === 'im' ? ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'].map(e => r + e)
+      : ['ai', 'as', 'a', 'ons', 'ez', 'ont'].map(e => v + e);
+}
+const TENSES = [['pr', 'présent', 'Aujourd\'hui', 'Au présent, avec nous on finit souvent par -ons, avec vous par -ez, avec ils ou elles par -ent.'],
+  ['im', 'imparfait', 'Autrefois', 'À l\'imparfait, les terminaisons sont -ais, -ais, -ait, -ions, -iez, -aient.'],
+  ['fu', 'futur', 'Demain', 'Au futur, on garde l\'infinitif et on ajoute -ai, -as, -a, -ons, -ez, -ont (attention aux verbes être, avoir, aller et faire).']];
+GEN['l-conjugaison'] = (L, d) => {
+  const [t, tname, when, hint] = TENSES[Math.min(d, 2)];
+  const v = pick([...VERBS1, ...VERBS1, ...Object.keys(IRREG)]), forms = conj(v, t), i = rand(0, 5), ans = forms[i];
+  const [N] = pick(KIDS);
+  const subj = [ /^[aeéèêiou]/.test(ans) ? "j'" : 'je', 'tu', pick(['il', 'elle', N]), 'nous', 'vous', pick(['ils', 'elles', 'les enfants'])][i];
+  const sep = subj === "j'" ? '' : ' ';
+  return {
+    label: 'Conjugaison · ' + tname, prompt: `${when}, ${subj}${sep}${BLANK} <span class="muted">(${v})</span>.`, speak: `Conjugue le verbe ${v} au ${tname}, avec ${subj === "j'" ? 'je' : subj}.`, read: true, story: true, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(forms)), hint, explain: `${cap(when)}, ${subj}${sep}${ans}.`
+  };
+};
+
+/* ---------- CE2 : accorder l'adjectif ---------- */
+const NOUNS_A = [['fleur', 'fleurs', 'f'], ['chat', 'chats', 'm'], ['maison', 'maisons', 'f'], ['ballon', 'ballons', 'm'], ['voiture', 'voitures', 'f'], ['chien', 'chiens', 'm'], ['robe', 'robes', 'f'], ['vélo', 'vélos', 'm'], ['pomme', 'pommes', 'f'], ['livre', 'livres', 'm'], ['table', 'tables', 'f'], ['sac', 'sacs', 'm']];
+const ADJ = ['petit', 'grand', 'joli', 'noir', 'vert', 'lourd', 'gris'];
+GEN['l-accords'] = (L, d) => {
+  const [sg, pl, g] = pick(NOUNS_A), plural_ = d === 1 || (d === 2 && Math.random() < .5);
+  const before = d === 2 && Math.random() < .6, a = before ? pick(['petit', 'grand', 'joli']) : pick(ADJ);
+  const F = { ms: a, fs: a + 'e', mp: a.endsWith('s') ? a : a + 's', fp: a + 'es' };
+  const ans = F[(g === 'f' ? 'f' : 'm') + (plural_ ? 'p' : 's')];
+  const det = plural_ ? 'les' : g === 'f' ? 'la' : 'le';
+  const prompt = before ? `${cap(det)} ${BLANK} ${plural_ ? pl : sg} ${plural_ ? 'sont' : 'est'} là.` : `${cap(det)} ${plural_ ? pl : sg} ${plural_ ? 'sont' : 'est'} ${BLANK}.`;
+  return {
+    label: 'Les accords', prompt, speak: `Comment faut-il écrire l'adjectif ${a} ?`, read: true, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(Object.values(F))),
+    hint: 'Cherche le nom : est-il masculin ou féminin ? singulier ou pluriel ? L\'adjectif s\'accorde avec lui.',
+    explain: `« ${plural_ ? pl : sg} » est ${g === 'f' ? 'féminin' : 'masculin'} ${plural_ ? 'pluriel' : 'singulier'} : on écrit « ${ans} ».`
+  };
+};
+
+/* ---------- CE2 : nature des mots ---------- */
+const TAGGED = ['Le/d petit/a chat/n dort/v', 'Ma/d sœur/n mange/v une/d pomme/n rouge/a', 'Le/d grand/a chien/n court/v vite/x', 'Les/d oiseaux/n chantent/v fort/x',
+  'Tom/n lit/v un/d gros/a livre/n', 'La/d maîtresse/n ouvre/v la/d porte/n', 'Mon/d vélo/n bleu/a roule/v', 'Une/d jolie/a fleur/n pousse/v',
+  'Papa/n répare/v la/d vieille/a voiture/n', 'Les/d enfants/n regardent/v un/d film/n drôle/a', 'Le/d bébé/n boit/v du/d lait/n chaud/a', 'Ce/d gentil/a lapin/n saute/v'];
+const CAT = { v: ['le verbe', 'Le verbe change quand on dit « hier » ou « demain ».'], n: ['un nom', 'Le nom désigne une personne, un animal ou une chose. On peut mettre « un », « une » ou « le » devant.'], a: ['un adjectif', 'L\'adjectif dit comment est le nom : sa couleur, sa taille…'] };
+GEN['l-nature'] = (L, d) => {
+  const c = ['v', 'n', 'a'][Math.min(d, 2)];
+  const s = pick(TAGGED.filter(x => x.includes('/' + c))).split(' ').map(t => t.split('/'));
+  const ans = pick(s.filter(t => t[1] === c))[0];
+  return {
+    label: 'Nature des mots', prompt: `<div class="text">${s.map(t => t[0]).join(' ')}.</div><div class="question">Quel mot est ${CAT[c][0]} ?</div>`,
+    speak: `Dans cette phrase, quel mot est ${CAT[c][0]} ?`, read: true, story: true, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, shuffle(s.filter(t => t[1] !== c).map(t => t[0]))),
+    hint: CAT[c][1], explain: `« ${ans} » est ${CAT[c][0]}.`
+  };
+};
+
+/* ---------- CE2 : synonymes et contraires ---------- */
+const SYN = [['content', 'joyeux'], ['triste', 'malheureux'], ['commencer', 'débuter'], ['finir', 'terminer'], ['regarder', 'observer'], ['beau', 'joli'], ['crier', 'hurler'], ['gentil', 'aimable'], ['fatigué', 'épuisé'], ['malin', 'rusé'], ['voiture', 'automobile'], ['peur', 'frayeur']];
+const ANT = [['grand', 'petit'], ['chaud', 'froid'], ['jour', 'nuit'], ['ouvrir', 'fermer'], ['monter', 'descendre'], ['rapide', 'lent'], ['plein', 'vide'], ['propre', 'sale'], ['lourd', 'léger'], ['gagner', 'perdre'], ['allumer', 'éteindre'], ['facile', 'difficile'], ['toujours', 'jamais'], ['entrer', 'sortir']];
+GEN['l-mots'] = (L, d) => {
+  const syn = d === 1 || (d === 2 && Math.random() < .5), list = syn ? SYN : ANT;
+  const pair = pick(list), [a, ans] = Math.random() < .5 ? pair : [pair[1], pair[0]];
+  const others = shuffle(list.filter(p => p !== pair).flat());
+  return {
+    label: syn ? 'Synonymes' : 'Contraires', prompt: syn ? `Quel mot veut dire presque la même chose que « <b>${a}</b> » ?` : `Quel est le contraire de « <b>${a}</b> » ?`,
+    speak: syn ? `Quel mot veut dire presque la même chose que ${a} ?` : `Quel est le contraire de ${a} ?`, read: true, story: true, visual: '',
+    answer: ans, input: 'choices', choices: withAnswer(ans, others),
+    hint: syn ? 'Essaie de remplacer le mot dans une phrase : le sens doit rester le même.' : 'Le contraire dit exactement l\'inverse.',
+    explain: syn ? `« ${a} » et « ${ans} » veulent dire presque la même chose.` : `Le contraire de « ${a} », c'est « ${ans} ».`
+  };
+};
+
 /* ================= Jeux disponibles ================= */
 const ACTS = [
   { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets' } },
@@ -920,6 +1470,21 @@ const ACTS = [
   { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables', ce2: 'Multiplier, diviser' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10', ce2: 'Tables de 2 à 9, division' } },
   { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande', ce2: 'La marchande' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie', ce2: 'Euros et centimes' } },
   { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes', ce2: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager', ce2: 'Problèmes en deux étapes' } }
+];
+const ACTS_LECT = [
+  { id: 'l-lettres', ico: '🔤', c: '#ff9f6b', nm: { cp: 'Les lettres' }, ds: { cp: 'Majuscules, minuscules, alphabet' } },
+  { id: 'l-syllabes', ico: '👏', c: '#4fb6ff', nm: { cp: 'Les syllabes' }, ds: { cp: 'Assembler et découper les mots' } },
+  { id: 'l-sons', ico: '👂', c: '#a98bff', nm: { cp: 'Les sons', ce1: 'Écrire les sons' }, ds: { cp: 'ou, on, an, in, oi, ch, au', ce1: 'eau, ain, en, oi, m devant b et p' } },
+  { id: 'l-motimage', ico: '🖼️', c: '#ffc93c', nm: { cp: 'Mot et image', ce1: 'Le bon mot' }, ds: { cp: 'Lire un mot, trouver l\'image', ce1: 'Repérer le mot bien écrit' } },
+  { id: 'l-phrases', ico: '💬', c: '#3fbf7f', nm: { cp: 'Lire des phrases', ce1: 'Phrases en désordre' }, ds: { cp: 'Comprendre une petite phrase', ce1: 'Choisir la phrase bien écrite' } },
+  { id: 'l-genre', ico: '👫', c: '#ff7a8a', nm: { ce1: 'Un, une, des' }, ds: { ce1: 'Masculin, féminin, pluriel' } },
+  { id: 'l-comprendre', ico: '📖', c: '#5ccfc0', nm: { ce1: 'Petites histoires', ce2: 'Lire des histoires' }, ds: { ce1: 'Lire un texte et répondre', ce2: 'Comprendre et déduire' } },
+  { id: 'l-alpha', ico: '📕', c: '#f78fd0', nm: { ce1: 'Le dictionnaire', ce2: 'Le dictionnaire' }, ds: { ce1: 'Ordre alphabétique', ce2: 'Ordre alphabétique, 2e et 3e lettre' } },
+  { id: 'l-homophones', ico: '🎯', c: '#ff6b5c', nm: { ce2: 'Homophones' }, ds: { ce2: 'a/à, et/est, son/sont, on/ont, ces/ses' } },
+  { id: 'l-conjugaison', ico: '⏳', c: '#8fc75b', nm: { ce2: 'Conjugaison' }, ds: { ce2: 'Présent, imparfait, futur' } },
+  { id: 'l-accords', ico: '🧷', c: '#7e9cff', nm: { ce2: 'Les accords' }, ds: { ce2: 'Accorder l\'adjectif' } },
+  { id: 'l-nature', ico: '🏷️', c: '#ff9f6b', nm: { ce2: 'Nature des mots' }, ds: { ce2: 'Nom, verbe, adjectif' } },
+  { id: 'l-mots', ico: '↔️', c: '#4fb6ff', nm: { ce2: 'Synonymes, contraires' }, ds: { ce2: 'Le sens des mots' } }
 ];
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐰', '🐯', '🐨', '🦄'];
 const STICKERS = ['🐶', '🐱', '🐭', '🐹', '🐻', '🐷', '🐮', '🐵', '🐔', '🐧', '🐢', '🐙', '🦀', '🐳', '🦒', '🦓', '🦔', '🦜', '🦩', '🦕', '🦖', '🐲', '🚀', '🏆'];
@@ -940,7 +1505,11 @@ function renderHome() {
   $('#voiceToggle').setAttribute('aria-pressed', save.voice);
   $('#voiceToggle').hidden = !canSpeak;
   $('#avatars').innerHTML = AVATARS.map(a => `<button type="button" aria-pressed="${a === save.avatar}" data-av="${a}">${a}</button>`).join('');
-  $('#tiles').innerHTML = ACTS.map(a => {
+  const lect = save.subject === 'lecture';
+  $('#brandWord').textContent = lect ? 'Mots' : 'Nombres';
+  document.querySelectorAll('[data-subject]').forEach(b => b.setAttribute('aria-pressed', b.dataset.subject === save.subject));
+  const list = lect ? ACTS_LECT.filter(a => a.nm[save.level]) : ACTS;
+  $('#tiles').innerHTML = list.map(a => {
     const st = save.stats[save.level + ':' + a.id];
     const best = st && st.played ? `★ ${st.best} / ${ROUND}` : 'Nouveau !';
     return `<button type="button" class="tile" style="--tile:${a.c}" data-act="${a.id}">
@@ -971,7 +1540,7 @@ function nextQuestion() {
   $('#roundStars').textContent = G.stars;
   $('#qlabel').textContent = `${q.label} · ${G.idx + 1} / ${ROUND}`;
   const p = $('#prompt');
-  p.className = 'prompt' + (q.story ? ' story' : '');
+  p.className = 'prompt' + (q.story ? ' story' : q.read ? ' read' : '');
   p.innerHTML = q.prompt;
   $('#visual').innerHTML = q.visual || '';
   $('#who').textContent = save.avatar;
@@ -987,7 +1556,7 @@ function renderAnswer() {
   if (q.input === 'choices') {
     const list = q.symbols ? q.choices : q.choices.map(v => [v, '']);
     const show = q.display || (v => v);
-    box.innerHTML = `<div class="choices">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : show(v)}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
+    box.innerHTML = `<div class="choices${q.read ? ' read' : ''}${q.long ? ' long' : ''}${q.emoji ? ' emo' : ''}">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : show(v)}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
   } else {
     const hasBlank = !!$('#prompt .blank');
     box.innerHTML = (hasBlank ? '' : `<div class="answerbox">${BLANK}</div>`) +
@@ -1113,9 +1682,9 @@ function renderAlbum() {
 }
 function renderParents() {
   const rows = [];
-  ['cp', 'ce1', 'ce2'].forEach(L => ACTS.forEach(a => {
+  ['cp', 'ce1', 'ce2'].forEach(L => ACTS.concat(ACTS_LECT).forEach(a => {
     const st = save.stats[L + ':' + a.id];
-    if (!st || !st.played) return;
+    if (!st || !st.played || !a.nm[L]) return;
     const pct = st.asked ? Math.round(st.first / st.asked * 100) : 0;
     const cls = pct >= 80 ? 'g' : pct >= 50 ? 'm' : 'b';
     rows.push(`<tr><td>${a.ico} ${a.nm[L]}</td><td>${L.toUpperCase()}</td><td class="num">${st.played}</td><td class="num">${st.asked}</td><td><span class="pill ${cls}">${pct} %</span></td><td>${['Facile', 'Moyen', 'Difficile'][st.diff]}</td></tr>`);
@@ -1147,6 +1716,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.act) { sfx.tap(); startGame(t.dataset.act); }
   else if (t.dataset.av) { save.avatar = t.dataset.av; persist(); sfx.tap(); renderHome(); }
+  else if (t.dataset.subject) { save.subject = t.dataset.subject; persist(); sfx.tap(); renderHome(); }
   else if (t.dataset.level) { save.level = t.dataset.level; persist(); sfx.tap(); renderHome(); }
   else if (t.dataset.k) keyPress(t.dataset.k);
   else if (t.classList.contains('choice') && G && !G.locked) check(t.dataset.v, t);
