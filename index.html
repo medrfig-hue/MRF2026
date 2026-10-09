@@ -159,6 +159,14 @@ button:focus-visible, input:focus-visible { outline: 4px solid var(--pencil); ou
 .wagon.loco { background: var(--pencil); border-color: var(--pencil-dark); }
 .wagon .blank { border-width: 2px; }
 .array { display: grid; gap: 4px; }
+.gridobjs { display: grid; gap: 2px; font-size: 1.25rem; line-height: 1; text-align: center; max-width: 100%; }
+.posee { width: auto; border-collapse: collapse; font-family: var(--display); font-weight: 800; font-size: 1.7rem; font-variant-numeric: tabular-nums; margin-inline: auto; }
+.posee td { border: 0; padding: 0 6px; text-align: center; min-width: 1.1em; white-space: nowrap; }
+.posee tr.cols td { font-size: .85rem; color: var(--ink-soft); text-transform: none; }
+.posee tr.res td { border-top: 3px solid var(--ink); height: 1.4em; }
+.coin.cu { --ring: #a8562a; --core: #d4874f; color: #3b1a06; width: 50px; height: 50px; }
+.coin.au { --ring: #c79a2e; --core: #e8c65c; width: 56px; height: 56px; }
+.bill.b100 { background-color: #8fd19e; }
 .array span { width: 18px; height: 18px; border-radius: 50%; background: var(--margin-red); }
 
 .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
@@ -237,7 +245,7 @@ td.num { text-align: right; }
     <div class="top">
       <div class="brand">
         <h1>Le Cahier des <span>Nombres</span></h1>
-        <span class="tag">Maths CP · CE1</span>
+        <span class="tag">Maths CP · CE1 · CE2</span>
       </div>
       <button class="star-pill" id="homeStars" type="button" title="Voir mon album">
         <span class="s">★</span><span id="starTotal">0</span>
@@ -257,6 +265,7 @@ td.num { text-align: right; }
         <div class="seg" role="group" aria-label="Ma classe">
           <button type="button" data-level="cp" id="lvlCp">CP</button>
           <button type="button" data-level="ce1" id="lvlCe1">CE1</button>
+          <button type="button" data-level="ce2" id="lvlCe2">CE2</button>
         </div>
         <div class="toggles">
           <button type="button" class="chip" id="soundToggle">🔔 Sons</button>
@@ -690,19 +699,227 @@ GEN.problemes = (L, d) => {
   };
 };
 
+/* ================= Niveau CE2 =================
+   Générateurs propres au CE2 (nombres jusqu'à 10 000, opérations posées, tables complètes,
+   division, centimes). Même format de question que GEN. */
+const fmt = n => n >= 1000 ? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : String(n);
+function posee(a, b, op) {
+  const A = String(a), B = String(b), n = Math.max(A.length, B.length);
+  const cells = s => s.padStart(n, ' ').split('').map(c => `<td>${c.trim()}</td>`).join('');
+  const head = ['m', 'c', 'd', 'u'].slice(-n).map(c => `<td>${c}</td>`).join('');
+  return `<table class="posee"><tr class="cols"><td></td>${head}</tr><tr><td></td>${cells(A)}</tr><tr><td>${op}</td>${cells(B)}</tr><tr class="res"><td></td>${cells('')}</tr></table>`;
+}
+const cents = pieces => pieces.map(v => `<span class="coin ${v < 10 ? 'cu' : 'au'}"><b>${v}</b><small>c</small></span>`).join('');
+const grid = (r, c, e) => `<div class="gridobjs" style="grid-template-columns:repeat(${c},1fr)">${`<span>${e}</span>`.repeat(r * c)}</div>`;
+const GEN2 = {};
+
+GEN2.compter = (L, d) => {
+  const [e, name] = pick(THINGS);
+  const r = rand(3, [5, 8, 10][d]), c = rand(4, [5, 8, 10][d]), n = r * c;
+  return {
+    label: 'Compter en rangées', prompt: `Combien de ${name} ?`, speak: `Combien de ${name} ? Compte vite avec les rangées.`,
+    visual: grid(r, c, e), answer: n, input: 'choices', choices: choicesAround(n, 3, 1, [n + c, n - c, r + c]),
+    hint: `Compte les ${name} d'une rangée, puis compte les rangées : c'est une multiplication.`,
+    explain: `${r} rangées de ${c} : ${r} × ${c} = ${n}.`
+  };
+};
+
+GEN2.addition = (L, d) => {
+  let a, b;
+  if (d === 0) { a = rand(25, 89); b = rand(10 - a % 10 + 10, 89); }
+  else if (d === 1) { a = rand(120, 780); b = rand(15, 99); }
+  else { a = rand(150, 650); b = rand(120, 999 - a); }
+  const s = a + b;
+  return {
+    label: 'Addition', prompt: `${fmt(a)} + ${fmt(b)} = ${BLANK}`, speak: `${a} plus ${b}, ça fait combien ?`, visual: '',
+    answer: s, input: 'keypad', hint: 'Pose l\'addition : commence par les unités, puis les dizaines, puis les centaines. N\'oublie pas les retenues.',
+    hintVisual: posee(a, b, '+'), explain: `${fmt(a)} + ${fmt(b)} = ${fmt(s)}`
+  };
+};
+
+GEN2.soustraction = (L, d) => {
+  let a, b;
+  if (d === 0) { a = rand(41, 99); b = rand(12, a - 10); if (b % 10 <= a % 10) b = Math.min(a - 1, b - b % 10 + a % 10 + 1); }
+  else if (d === 1) { a = rand(200, 999); b = rand(15, 99); }
+  else { a = rand(400, 999); b = rand(110, a - 50); }
+  const r = a - b;
+  return {
+    label: 'Soustraction', prompt: `${fmt(a)} − ${fmt(b)} = ${BLANK}`, speak: `${a} moins ${b}, ça fait combien ?`, visual: '',
+    answer: r, input: 'keypad', hint: `Pose la soustraction en commençant par les unités. Pour vérifier : ${b} + ta réponse doit donner ${a}.`,
+    hintVisual: posee(a, b, '−'), explain: `${fmt(a)} − ${fmt(b)} = ${fmt(r)}`
+  };
+};
+
+GEN2.complement = (L, d) => {
+  let a, t;
+  if (d === 0) { t = 100; a = rand(11, 89); }
+  else if (d === 1) { a = rand(101, 899); if (a % 100 === 0) a += 30; t = Math.ceil(a / 100) * 100; }
+  else { t = 1000; a = Math.random() < .5 ? rand(1, 9) * 100 + rand(1, 9) * 10 : rand(101, 899); }
+  const next = Math.ceil(a / 10) * 10;
+  return {
+    label: 'Pour aller à ' + fmt(t), prompt: `${fmt(a)} + ${BLANK} = ${fmt(t)}`, speak: `Combien faut-il ajouter à ${a} pour avoir ${t} ?`, visual: '',
+    answer: t - a, input: 'keypad',
+    hint: a % 10 ? `Fais des bonds : de ${a} à ${next}, puis de ${next} jusqu'à ${t}.` : `Compte de 10 en 10 ou de 100 en 100 jusqu'à ${t}.`,
+    explain: `${fmt(a)} + ${fmt(t - a)} = ${fmt(t)}`
+  };
+};
+
+GEN2.comparer = (L, d) => {
+  let A, B, va, vb;
+  if (d < 2) {
+    const max = d === 0 ? 1000 : 9999;
+    va = rand(100, max);
+    vb = Math.random() < .12 ? va : Math.random() < .4 ? Number(String(va).split('').reverse().join('')) : Math.random() < .5 ? va + pick([-100, -10, -1, 1, 10, 100]) : rand(100, max);
+    vb = Math.max(0, Math.min(max, vb)); A = fmt(va); B = fmt(vb);
+  } else {
+    const x = rand(5, 9), y = rand(3, 9); va = x * y;
+    vb = Math.random() < .25 ? va : va + pick([-2, -1, 1, 2]);
+    A = `${x} × ${y}`; B = String(vb);
+  }
+  const ans = va < vb ? '<' : va > vb ? '>' : '=';
+  return {
+    label: 'Comparer', prompt: `${A} ${BLANK} ${B}`, speak: `Quel signe faut-il mettre entre ${String(A).replace('×', 'fois').replace(/ /g, '')} et ${String(B).replace(/ /g, '')} ?`,
+    visual: '', answer: ans, input: 'choices', symbols: true,
+    choices: [['<', 'plus petit'], ['=', 'égal'], ['>', 'plus grand']],
+    hint: d < 2 ? 'Le nombre qui a le plus de chiffres est le plus grand. Sinon, compare les milliers, puis les centaines, puis les dizaines, puis les unités. 🐊' : 'Calcule d\'abord la multiplication, puis compare. 🐊',
+    explain: `${A} ${ans} ${B}`
+  };
+};
+
+GEN2.dizaines = (L, d) => {
+  const n = d === 0 ? rand(101, 999) : rand(1001, 9999);
+  const digits = String(n).split('').map(Number);
+  if (d === 0) {
+    return {
+      label: 'Centaines', prompt: 'Quel nombre est-ce ?', speak: 'Quel nombre est représenté ?', visual: base10(n), answer: n, input: 'choices',
+      choices: choicesAround(n, 1, 1, [n + 100, n - 100, n + 10, Number(String(n).split('').reverse().join(''))]),
+      hint: 'Une plaque = 100, une barre = 10, un cube = 1.', explain: `${n} = ${plural(Math.floor(n / 100), 'centaine')}, ${plural(Math.floor(n / 10) % 10, 'dizaine')} et ${plural(n % 10, 'unité')}`
+    };
+  }
+  const [m, c, dz, u] = digits;
+  const words = `${plural(m, 'millier')}, ${plural(c, 'centaine')}, ${plural(dz, 'dizaine')} et ${plural(u, 'unité')}`;
+  if (d === 1) {
+    const alt = [Number(`${m}${dz}${c}${u}`), Number(`${m}${c}${u}${dz}`), n + 1000, n + 100].filter(v => v !== n && v > 999);
+    return {
+      label: 'Milliers', prompt: `Quel nombre fait ${words} ?`, story: true, speak: `Quel nombre fait ${words} ?`, visual: '', answer: n, input: 'choices',
+      choices: choicesAround(n, 1, 1000, alt).map(v => v), display: fmt,
+      hint: 'Écris un chiffre par case : milliers, centaines, dizaines, unités. Un zéro garde la place vide.', explain: `${fmt(n)} = ${words}`
+    };
+  }
+  const ask = pick(['milliers', 'centaines', 'dizaines']);
+  const digit = { milliers: m, centaines: c, dizaines: dz }[ask];
+  const ch = new Set([digit, ...digits]); while (ch.size < 4) ch.add(rand(0, 9));
+  return {
+    label: 'Milliers', prompt: `Dans <b>${fmt(n)}</b>, quel est le chiffre des ${ask} ?`, speak: `Dans ${n}, quel est le chiffre des ${ask} ?`, visual: '',
+    answer: digit, input: 'choices', choices: shuffle([...ch]),
+    hint: 'De droite à gauche : unités, dizaines, centaines, milliers.', explain: `${fmt(n)} = ${words}`
+  };
+};
+
+GEN2.suite = (L, d) => {
+  const step = [pick([25, 50, 100]), pick([1000, -100, -50]), pick([250, -25, 9, 11, -1000])][d];
+  let start;
+  if (Math.abs(step) === 1000) start = rand(0, 4) * 1000 + rand(100, 999);
+  else if (step === 9 || step === 11) start = rand(10, 200);
+  else start = rand(0, 30) * Math.abs(step) + (Math.abs(step) === 100 ? rand(0, 99) : 0);
+  if (step < 0) start = Math.max(start, -4 * step);
+  const seq = Array.from({ length: 5 }, (_, i) => start + i * step);
+  const miss = rand(1, 4), ans = seq[miss];
+  const wag = seq.map((v, i) => `<span class="wagon${i === 0 ? ' loco' : ''}">${i === miss ? BLANK : fmt(v)}</span>`).join('');
+  const word = step > 0 ? `on avance de ${step} en ${step}` : `on recule de ${-step} en ${-step}`;
+  return {
+    label: 'Le train des nombres', prompt: `<div class="train">${wag}</div>`, speak: `Quel nombre manque dans le train ? ${seq.map((v, i) => i === miss ? 'quoi' : v).join(', ')}.`,
+    visual: '', answer: ans, input: 'choices', display: fmt,
+    choices: choicesAround(ans, 2, 0, [ans + step, ans - step, ans + 10, ans - 10].filter(v => v !== ans)),
+    hint: `Regarde deux wagons qui se suivent : ${word}.${step === 9 ? ' Astuce : + 9, c\'est + 10 puis − 1.' : step === 11 ? ' Astuce : + 11, c\'est + 10 puis + 1.' : ''}`,
+    explain: `Dans ce train, ${word}. Il manquait ${fmt(ans)}.`
+  };
+};
+
+GEN2.doubles = (L, d) => {
+  const half = d === 1 || (d === 2 && Math.random() < .5);
+  let n;
+  if (d === 0) n = pick([rand(15, 49), rand(5, 50) * 5]);
+  else if (d === 1) n = rand(20, 200) * 2;
+  else n = half ? pick([rand(1, 9) * 100 + rand(0, 9) * 20, 1000, rand(1, 49) * 20]) : pick([rand(1, 9) * 50, rand(101, 450)]);
+  return half ? {
+    label: 'Moitié', prompt: `La moitié de ${fmt(n)}, c'est ${BLANK}`, speak: `Quelle est la moitié de ${n} ?`, visual: '', answer: n / 2, input: 'keypad',
+    hint: `Coupe le nombre en morceaux faciles : la moitié des centaines, puis la moitié du reste.`, explain: `${fmt(n / 2)} + ${fmt(n / 2)} = ${fmt(n)}`
+  } : {
+    label: 'Double', prompt: `Le double de ${fmt(n)}, c'est ${BLANK}`, speak: `Quel est le double de ${n} ?`, visual: '', answer: n * 2, input: 'keypad',
+    hint: n >= 100 ? `Double les centaines, puis double le reste, et ajoute.` : `Double les dizaines, puis double les unités, et ajoute.`, explain: `${fmt(n)} + ${fmt(n)} = ${fmt(n * 2)}`
+  };
+};
+
+GEN2.multiplier = (L, d) => {
+  if (d === 0) {
+    const t = rand(2, 9), k = rand(2, 10);
+    return { label: 'Table de ' + t, prompt: `${k} × ${t} = ${BLANK}`, speak: `${k} fois ${t}, ça fait combien ?`, visual: '', answer: k * t, input: 'keypad',
+      hint: `Pars d'un résultat que tu connais : ${k - 1} × ${t} = ${(k - 1) * t}, puis ajoute ${t}.`, hintVisual: dotArray(k, t), explain: `${k} × ${t} = ${k * t}` };
+  }
+  if (d === 1) {
+    if (Math.random() < .3) { const a = rand(2, 99), m = pick([10, 100]); return { label: 'Multiplier', prompt: `${a} × ${m} = ${BLANK}`, speak: `${a} fois ${m}, ça fait combien ?`, visual: '', answer: a * m, input: 'keypad',
+      hint: `Multiplier par ${m}, c'est mettre ${m === 10 ? 'un zéro' : 'deux zéros'} à droite du nombre.`, explain: `${a} × ${m} = ${fmt(a * m)}` }; }
+    const a = rand(12, 49), b = rand(2, 5), dz = a - a % 10;
+    return { label: 'Multiplier', prompt: `${a} × ${b} = ${BLANK}`, speak: `${a} fois ${b}, ça fait combien ?`, visual: '', answer: a * b, input: 'keypad',
+      hint: `Découpe ${a} en ${dz} + ${a % 10} : calcule ${dz} × ${b}, puis ${a % 10} × ${b}, et ajoute.`, explain: `${dz} × ${b} = ${dz * b} et ${a % 10} × ${b} = ${(a % 10) * b}, donc ${a} × ${b} = ${a * b}` };
+  }
+  const t = rand(2, 9), q = rand(2, 10);
+  return { label: 'Diviser', prompt: `${t * q} : ${t} = ${BLANK}`, speak: `Combien de fois ${t} dans ${t * q} ?`, visual: '', answer: q, input: 'keypad',
+    hint: `Cherche dans la table de ${t} : ? × ${t} = ${t * q}.`, explain: `${q} × ${t} = ${t * q}, donc ${t * q} : ${t} = ${q}` };
+};
+
+GEN2.monnaie = (L, d) => {
+  if (d === 0) {
+    const pieces = []; let sum = 0, tries = 0; const target = rand(30, 99);
+    while (sum < target && tries++ < 40) { const v = pick([50, 20, 10, 5, 2, 1]); if (sum + v <= 99) { pieces.push(v); sum += v; } }
+    pieces.sort((a, b) => b - a);
+    return { label: 'Les centimes', prompt: 'Combien de centimes y a-t-il ?', speak: 'Combien de centimes y a-t-il en tout ?', visual: cents(pieces), answer: sum, input: 'keypad',
+      hint: 'Commence par les grosses pièces dorées (50, 20, 10), puis ajoute les petites pièces cuivrées.', explain: `${pieces.join(' + ')} = ${sum} centimes` };
+  }
+  if (d === 1) {
+    const pieces = []; let sum = 0, tries = 0; const target = rand(80, 250);
+    while (sum < target && tries++ < 40) { const v = pick([100, 50, 20, 10, 5, 2, 1]); if (sum + v <= 250) { pieces.push(v); sum += v; } }
+    pieces.sort((a, b) => b - a);
+    return { label: 'La monnaie', prompt: 'Combien d\'euros y a-t-il ?', speak: 'Combien d\'euros y a-t-il en tout ?', visual: money(pieces), answer: sum, input: 'keypad',
+      hint: 'Commence par les plus gros billets, puis ajoute les autres un par un.', explain: `${pieces.join(' + ')} = ${sum} €` };
+  }
+  const pay = pick([50, 100]), price = rand(11, pay - 3);
+  const item = pick(['un vélo d\'occasion', 'une paire de rollers', 'un jeu de société', 'un sac à dos', 'une lampe de poche']);
+  return { label: 'Rendre la monnaie', prompt: `Tu achètes ${item} à <b>${price} €</b>. Tu paies avec ce billet. Combien le marchand te rend-il ?`, story: true,
+    speak: `Tu achètes ${item} à ${price} euros. Tu paies avec un billet de ${pay} euros. Combien le marchand te rend-il ?`, visual: money([pay]), answer: pay - price, input: 'keypad',
+    hint: `Cherche : ${price} + ? = ${pay}. Va d'abord à la dizaine suivante, puis jusqu'à ${pay}.`, explain: `${price} + ${pay - price} = ${pay}, on te rend ${pay - price} €.` };
+};
+
+GEN2.problemes = (L, d) => {
+  const [[N, p], [M, p2]] = shuffle(KIDS), o = pick(STUFF), P = p[0].toUpperCase() + p.slice(1);
+  const kinds = [['ajout', 'retrait', 'ecart', 'fois'], ['fois', 'partage', 'paquets', 'ecart'], ['etapes', 'paquets', 'partage', 'prix']][d];
+  const k = pick(kinds);
+  let text, ans, explain, hint;
+  if (k === 'ajout') { const a = rand(120, 600), b = rand(35, 300); text = `${N} a ${a} ${o} dans sa collection. ${P} en reçoit ${b} pour son anniversaire. Combien de ${o} a-t-${p} maintenant ?`; ans = a + b; explain = `${a} + ${b} = ${ans}`; hint = 'Il y en a plus à la fin : c\'est une addition.'; }
+  else if (k === 'retrait') { const a = rand(150, 900), b = rand(25, a - 50); text = `Une école a ${a} ${o}. Elle en donne ${b} à une autre école. Combien de ${o} lui reste-t-il ?`; ans = a - b; explain = `${a} − ${b} = ${ans}`; hint = 'Il en reste moins qu\'avant : c\'est une soustraction.'; }
+  else if (k === 'ecart') { const a = rand(100, 500), b = a + rand(20, 300); text = `${N} a ${a} ${o}. ${M} en a ${b}. Combien de ${o} ${M} a-t-${p2} de plus que ${N} ?`; ans = b - a; explain = `${a} + ${ans} = ${b}`; hint = 'Cherche ce qu\'il faut ajouter au petit nombre pour arriver au grand.'; }
+  else if (k === 'fois') { const a = rand(3, 9), b = rand(6, 25); text = `Il y a ${a} boîtes. Dans chaque boîte, il y a ${b} ${o}. Combien de ${o} y a-t-il en tout ?`; ans = a * b; explain = `${a} × ${b} = ${ans}`; hint = 'Le même nombre plusieurs fois : c\'est une multiplication.'; }
+  else if (k === 'partage') { const a = rand(2, 9), b = rand(3, 10); text = `${N} partage ${a * b} ${o} entre ${a} amis. Chacun en reçoit autant. Combien de ${o} chaque ami reçoit-il ?`; ans = b; explain = `${a} × ${b} = ${a * b}, donc chacun reçoit ${b} ${o}.`; hint = `Cherche dans la table de ${a} : ${a} × ? = ${a * b}.`; }
+  else if (k === 'paquets') { const a = rand(3, 9), b = rand(3, 10); text = `On range ${a * b} œufs dans des boîtes de ${a}. Combien de boîtes remplit-on ?`; ans = b; explain = `${b} × ${a} = ${a * b}, donc il faut ${b} boîtes.`; hint = `Combien de fois ${a} dans ${a * b} ? Cherche dans la table de ${a}.`; }
+  else if (k === 'etapes') { const a = rand(40, 150), b = rand(10, 60), c = rand(5, a - 5); text = `${N} a ${a} ${o}. ${P} en gagne ${b}, puis en perd ${c}. Combien de ${o} a-t-${p} à la fin ?`; ans = a + b - c; explain = `${a} + ${b} = ${a + b}, puis ${a + b} − ${c} = ${ans}`; hint = 'Fais le calcul en deux étapes : d\'abord ce qui est gagné, ensuite ce qui est perdu.'; }
+  else { const n = rand(2, 6), price = rand(3, 15), pay = Math.ceil(n * price / 10) * 10 + pick([10, 20]); text = `${N} achète ${n} livres à ${price} € chacun. ${P} paie avec ${pay} €. Combien d'euros lui rend-on ?`; ans = pay - n * price; explain = `${n} × ${price} = ${n * price} €, puis ${pay} − ${n * price} = ${ans} €`; hint = 'Deux étapes : calcule d\'abord le prix total, puis la monnaie rendue.'; }
+  return { label: 'Problème', prompt: text, story: true, speak: text, visual: '', answer: ans, input: 'keypad', hint, explain };
+};
+
 /* ================= Jeux disponibles ================= */
 const ACTS = [
-  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10' } },
-  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue' } },
-  { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100' } },
-  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100' } },
-  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000' } },
-  { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes' } },
-  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…' } },
-  { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100' } },
-  { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10' } },
-  { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie' } },
-  { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager' } }
+  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets' } },
+  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions', ce2: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue', ce2: 'Jusqu\'à 1000, opérations posées' } },
+  { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions', ce2: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000, avec retenues' } },
+  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100', ce2: 'Aller à 1000' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100', ce2: 'Compléter à 100 et à 1000' } },
+  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile', ce2: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000', ce2: 'Comparer jusqu\'à 10 000' } },
+  { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines', ce2: 'Milliers' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes', ce2: 'Milliers, centaines, dizaines' } },
+  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train', ce2: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…', ce2: 'De 25, 50, 100, 1000…' } },
+  { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés', ce2: 'Doubles et moitiés' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000' } },
+  { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables', ce2: 'Multiplier, diviser' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10', ce2: 'Tables de 2 à 9, division' } },
+  { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande', ce2: 'La marchande' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie', ce2: 'Euros et centimes' } },
+  { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes', ce2: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager', ce2: 'Problèmes en deux étapes' } }
 ];
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐰', '🐯', '🐨', '🦄'];
 const STICKERS = ['🐶', '🐱', '🐭', '🐹', '🐻', '🐷', '🐮', '🐵', '🐔', '🐧', '🐢', '🐙', '🦀', '🐳', '🦒', '🦓', '🦔', '🦜', '🦩', '🦕', '🦖', '🐲', '🚀', '🏆'];
@@ -718,8 +935,7 @@ function renderHome() {
   $('#avatarBig').textContent = save.avatar;
   $('#nameInput').value = save.name;
   $('#greeting').textContent = save.name ? `${save.name}, choisis un jeu !` : 'Choisis un jeu !';
-  $('#lvlCp').setAttribute('aria-pressed', save.level === 'cp');
-  $('#lvlCe1').setAttribute('aria-pressed', save.level === 'ce1');
+  document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === save.level));
   $('#soundToggle').setAttribute('aria-pressed', save.sound);
   $('#voiceToggle').setAttribute('aria-pressed', save.voice);
   $('#voiceToggle').hidden = !canSpeak;
@@ -747,7 +963,8 @@ function nextQuestion() {
   clearTimeout(G.timer);
   if (G.idx >= ROUND) return endGame();
   let q, guard = 0;
-  do { q = GEN[G.id](G.level, G.diff); } while (guard++ < 10 && G.last && q.prompt === G.last);
+  const gen = (G.level === 'ce2' && GEN2[G.id]) || GEN[G.id];
+  do { q = gen(G.level, G.diff); } while (guard++ < 10 && G.last && q.prompt === G.last);
   G.last = q.prompt;
   G.q = q; G.tries = 0; G.typed = ''; G.locked = false;
   renderDots();
@@ -769,7 +986,8 @@ function renderAnswer() {
   const q = G.q, box = $('#answer');
   if (q.input === 'choices') {
     const list = q.symbols ? q.choices : q.choices.map(v => [v, '']);
-    box.innerHTML = `<div class="choices">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : v}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
+    const show = q.display || (v => v);
+    box.innerHTML = `<div class="choices">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : show(v)}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
   } else {
     const hasBlank = !!$('#prompt .blank');
     box.innerHTML = (hasBlank ? '' : `<div class="answerbox">${BLANK}</div>`) +
@@ -800,7 +1018,7 @@ function keyPress(k) {
   sfx.tap();
   if (k === 'del') G.typed = G.typed.slice(0, -1);
   else if (k === 'ok') { if (G.typed !== '') check(G.typed); return; }
-  else if (G.typed.length < 4) G.typed = (G.typed === '0' ? '' : G.typed) + k;
+  else if (G.typed.length < 5) G.typed = (G.typed === '0' ? '' : G.typed) + k;
   setBlank(G.typed);
 }
 
@@ -814,7 +1032,7 @@ function check(value, btn) {
     G.asked++;
     if (firstTry) { G.stars++; G.first++; G.streak++; G.errs = 0; } else { G.streak = 0; }
     G.results[G.idx] = firstTry ? 'good' : 'ok';
-    if (q.input === 'keypad' || $('#prompt .blank')) setBlank(String(q.answer), 'right');
+    if (q.input === 'keypad' || $('#prompt .blank')) setBlank((q.display || String)(q.answer), 'right');
     if (btn) btn.classList.add('right');
     disableChoices();
     const cheer = pick(CHEERS);
@@ -844,9 +1062,9 @@ function check(value, btn) {
   G.locked = true; G.asked++;
   G.streak = 0; G.errs++;
   G.results[G.idx] = 'miss';
-  setBlank(String(q.answer), 'right');
+  setBlank((q.display || String)(q.answer), 'right');
   disableChoices(true);
-  setBubble('bad', `La bonne réponse est <b>${escapeSym(q.answer)}</b>. ${q.explain.replace(/[^.!]$/, '$&.')} <br>Ce n'est pas grave, on apprend en se trompant !`);
+  setBubble('bad', `La bonne réponse est <b>${escapeSym((q.display || String)(q.answer))}</b>. ${q.explain.replace(/[^.!]$/, '$&.')} <br>Ce n'est pas grave, on apprend en se trompant !`);
   if (save.voice) say('La bonne réponse est ' + q.explain.replace('×', 'fois').replace('−', 'moins').replace('+', 'plus'));
   adapt();
   renderDots();
@@ -895,7 +1113,7 @@ function renderAlbum() {
 }
 function renderParents() {
   const rows = [];
-  ['cp', 'ce1'].forEach(L => ACTS.forEach(a => {
+  ['cp', 'ce1', 'ce2'].forEach(L => ACTS.forEach(a => {
     const st = save.stats[L + ':' + a.id];
     if (!st || !st.played) return;
     const pct = st.asked ? Math.round(st.first / st.asked * 100) : 0;
