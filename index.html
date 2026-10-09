@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le Cahier des Nombres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;700;800&display=swap">
+<style>
+/* Layout : une page de cahier Seyès (lignes d'école françaises), cartes « feuille blanche » posées dessus, une colonne centrée. Thème clair assumé : c'est un cahier. */
+:root {
+  color-scheme: light;
+  --paper: #f8faff;
+  --line: #e2e7f7;
+  --line-strong: #c9d2ef;
+  --margin-red: #e8737a;
+  --ink: #1d2f6f;          /* encre bleue du stylo plume */
+  --ink-soft: #55649a;
+  --card: #ffffff;
+  --pencil: #ffc93c;       /* crayon jaune */
+  --pencil-dark: #d99a00;
+  --leaf: #2f9d62;         /* vert « bravo » */
+  --leaf-soft: #dff3e7;
+  --oops: #e2574c;
+  --oops-soft: #fde6e3;
+  --shade: rgba(29, 47, 111, .14);
+  --display: "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Andika", "Verdana", "Segoe UI", system-ui, sans-serif;
+  --radius: 22px;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 18px;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    repeating-linear-gradient(to bottom, var(--line-strong) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(to right, var(--line-strong) 0 1px, transparent 1px 32px);
+  -webkit-tap-highlight-color: transparent;
+}
+body::before {
+  content: ""; position: fixed; top: 0; bottom: 0; left: 28px; width: 2px;
+  background: var(--margin-red); opacity: .55; pointer-events: none;
+}
+.wrap { max-width: 780px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 40px; position: relative; }
+h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.1; text-wrap: balance; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 4px solid var(--pencil); outline-offset: 3px; }
+.sheet { background: var(--card); border-radius: var(--radius); box-shadow: 0 2px 0 var(--line-strong), 0 10px 30px var(--shade); }
+
+/* --- Boutons « 3D » --- */
+.btn {
+  border: 0; border-radius: 16px; padding: 12px 20px; font-family: var(--display); font-weight: 700; font-size: 1.15rem;
+  background: var(--pencil); color: var(--ink); box-shadow: 0 5px 0 var(--pencil-dark); transition: transform .08s, box-shadow .08s;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pencil-dark); }
+.btn.ghost { background: var(--card); box-shadow: 0 4px 0 var(--line-strong); border: 2px solid var(--line-strong); }
+.btn.ghost:active { box-shadow: 0 0 0 var(--line-strong); }
+.btn.small { font-size: 1rem; padding: 8px 14px; border-radius: 12px; }
+
+/* --- Accueil --- */
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 18px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-size: clamp(2rem, 6vw, 2.8rem); font-weight: 800; letter-spacing: -.5px; }
+.brand h1 span { color: var(--margin-red); }
+.tag { font-family: var(--display); font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.star-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--pencil); border-radius: 999px; padding: 4px 14px; font-family: var(--display); font-weight: 800; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.star-pill .s { color: var(--pencil-dark); }
+
+.hello { padding: 18px; display: grid; gap: 14px; margin-bottom: 22px; }
+.hello-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.avatar-big { font-size: 3rem; width: 72px; height: 72px; display: grid; place-items: center; background: var(--leaf-soft); border-radius: 50%; flex: none; }
+.hello label { font-family: var(--display); font-weight: 700; display: block; font-size: .95rem; color: var(--ink-soft); }
+.hello input[type=text] { font: inherit; font-size: 1.3rem; padding: 8px 12px; border: 2px solid var(--line-strong); border-radius: 12px; width: min(260px, 100%); color: var(--ink); background: var(--paper); }
+.grow { flex: 1 1 200px; min-width: 0; }
+.avatars { display: flex; gap: 6px; flex-wrap: wrap; }
+.avatars button { font-size: 1.6rem; width: 46px; height: 46px; border-radius: 12px; border: 2px solid transparent; background: var(--paper); }
+.avatars button[aria-pressed=true] { border-color: var(--leaf); background: var(--leaf-soft); }
+.seg { display: inline-flex; background: var(--paper); border: 2px solid var(--line-strong); border-radius: 14px; padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; border-radius: 10px; padding: 6px 16px; font-family: var(--display); font-weight: 800; font-size: 1.15rem; color: var(--ink-soft); }
+.seg button[aria-pressed=true] { background: var(--ink); color: #fff; }
+.toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 2px solid var(--line-strong); background: var(--paper); border-radius: 999px; padding: 6px 14px; font-family: var(--display); font-weight: 700; font-size: 1rem; }
+.chip[aria-pressed=true] { border-color: var(--leaf); background: var(--leaf-soft); }
+
+.section-title { font-family: var(--display); font-weight: 800; font-size: 1.5rem; margin: 6px 0 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 14px; }
+.tile {
+  border: 0; text-align: left; padding: 14px; border-radius: var(--radius); background: var(--card); display: grid; gap: 4px; align-content: start;
+  box-shadow: 0 5px 0 var(--tile, var(--line-strong)), 0 8px 20px var(--shade); transition: transform .12s; position: relative; overflow: hidden;
+}
+.tile::after { content: ""; position: absolute; right: -24px; top: -24px; width: 80px; height: 80px; border-radius: 50%; background: var(--tile); opacity: .18; }
+.tile:hover { transform: translateY(-3px) rotate(-.6deg); }
+.tile:active { transform: translateY(3px); }
+.tile .ico { font-size: 2.2rem; line-height: 1; }
+.tile .nm { font-family: var(--display); font-weight: 800; font-size: 1.3rem; }
+.tile .ds { font-size: .9rem; color: var(--ink-soft); line-height: 1.3; }
+.tile .best { font-family: var(--display); font-weight: 700; font-size: .95rem; color: var(--pencil-dark); font-variant-numeric: tabular-nums; }
+.footer-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+
+/* --- Jeu --- */
+.gamebar { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.dot { width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 2px solid var(--line-strong); }
+.dot.now { border-color: var(--ink); transform: scale(1.2); }
+.dot.good { background: var(--pencil); border-color: var(--pencil-dark); }
+.dot.ok { background: var(--leaf-soft); border-color: var(--leaf); }
+.dot.miss { background: var(--oops-soft); border-color: var(--oops); }
+.qcard { padding: 20px 18px 22px; display: grid; gap: 16px; }
+.qhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.qlabel { font-family: var(--display); font-weight: 700; color: var(--ink-soft); font-size: .95rem; letter-spacing: .06em; text-transform: uppercase; }
+.speak { border: 2px solid var(--line-strong); background: var(--paper); border-radius: 50%; width: 48px; height: 48px; font-size: 1.4rem; flex: none; }
+.prompt { font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 7vw, 2.6rem); text-align: center; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.prompt.story { font-family: var(--body); font-weight: 700; font-size: clamp(1.2rem, 4.6vw, 1.5rem); text-align: left; line-height: 1.5; max-width: 34em; margin-inline: auto; }
+.blank { display: inline-block; min-width: 1.6em; padding: 0 .25em; border: 3px dashed var(--ink-soft); border-radius: 12px; color: var(--ink-soft); text-align: center; line-height: 1.2; }
+.blank.filled { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.blank.right { border-color: var(--leaf); background: var(--leaf-soft); color: var(--leaf); }
+.blank.wrong { border-color: var(--oops); background: var(--oops-soft); color: var(--oops); animation: shake .35s; }
+.answerbox { text-align: center; font-family: var(--display); font-weight: 800; font-size: 2.4rem; }
+
+.visual { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.visual:empty { display: none; }
+.objs { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 260px; font-size: 1.8rem; line-height: 1; }
+.objs .gone { opacity: .35; position: relative; }
+.objs .gone::after { content: ""; position: absolute; left: -2px; right: -2px; top: 50%; height: 4px; background: var(--oops); transform: rotate(-30deg); border-radius: 2px; }
+.op { font-family: var(--display); font-weight: 800; font-size: 2rem; }
+.frame { display: grid; grid-template-columns: repeat(5, 38px); grid-template-rows: repeat(2, 38px); border: 3px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--card); }
+.frame .cell { display: grid; place-items: center; font-size: 1.5rem; border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
+.frame .cell:nth-child(5n) { border-right: 0; }
+.frame .cell:nth-child(n+6) { border-bottom: 0; }
+.frame .cell.empty { background: var(--paper); }
+.group { border: 3px dashed var(--line-strong); border-radius: 50%; padding: 12px; min-width: 70px; min-height: 70px; display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; align-content: center; font-size: 1.5rem; max-width: 120px; }
+.b10 { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
+.b10 .pack { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
+.plate { width: 80px; height: 80px; background-color: #ffb4a2; border: 2px solid #b94f37; background-image: linear-gradient(to right, rgba(0,0,0,.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.18) 1px, transparent 1px); background-size: 8px 8px; border-radius: 3px; }
+.bar { width: 14px; height: 140px; background-color: #8fd3ff; border: 2px solid #2b78b3; background-image: linear-gradient(to bottom, rgba(0,0,0,.22) 1px, transparent 1px); background-size: 100% 14px; border-radius: 3px; }
+.cube { width: 16px; height: 16px; background: #9be38f; border: 2px solid #3d8a33; border-radius: 3px; }
+.b10 .lbl { font-family: var(--display); font-weight: 700; font-size: .9rem; color: var(--ink-soft); text-align: center; width: 100%; }
+.b10 .col { display: grid; gap: 6px; justify-items: center; }
+.cubes { display: grid; grid-template-columns: repeat(3, 16px); gap: 3px; }
+.coin { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; align-content: center; font-family: var(--display); font-weight: 800; line-height: .9; box-shadow: inset 0 0 0 6px var(--ring), 0 3px 0 rgba(0,0,0,.2); background: var(--core); color: #4a3a00; }
+.coin small { font-size: .75rem; }
+.coin b { font-size: 1.4rem; }
+.coin.c1 { --ring: #e9c75b; --core: #d4d7dc; }
+.coin.c2 { --ring: #d4d7dc; --core: #e9c75b; }
+.bill { width: 108px; height: 56px; border-radius: 6px; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 1.4rem; color: #1b1b1b; box-shadow: 0 3px 0 rgba(0,0,0,.2); border: 2px solid rgba(0,0,0,.18); background-image: radial-gradient(circle at 80% 50%, rgba(255,255,255,.55) 0 14px, transparent 15px); }
+.bill.b5 { background-color: #b9bfc6; }
+.bill.b10 { background-color: #f08f8a; }
+.bill.b20 { background-color: #8fb4e8; }
+.bill.b50 { background-color: #f5b46a; }
+.train { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.wagon { min-width: 64px; padding: 8px 10px; border-radius: 10px 10px 4px 4px; background: var(--leaf-soft); border: 3px solid var(--leaf); font-family: var(--display); font-weight: 800; font-size: 1.6rem; text-align: center; position: relative; font-variant-numeric: tabular-nums; }
+.wagon::after { content: "● ●"; position: absolute; bottom: -16px; left: 0; right: 0; font-size: .7rem; color: var(--ink); letter-spacing: 14px; }
+.wagon.loco { background: var(--pencil); border-color: var(--pencil-dark); }
+.wagon .blank { border-width: 2px; }
+.array { display: grid; gap: 4px; }
+.array span { width: 18px; height: 18px; border-radius: 50%; background: var(--margin-red); }
+
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.choice { border: 0; background: var(--card); border: 3px solid var(--line-strong); border-radius: 18px; padding: 12px 8px; font-family: var(--display); font-weight: 800; font-size: 2rem; box-shadow: 0 5px 0 var(--line-strong); font-variant-numeric: tabular-nums; display: grid; gap: 0; }
+.choice small { font-family: var(--body); font-weight: 700; font-size: .85rem; color: var(--ink-soft); }
+.choice:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--line-strong); }
+.choice.right { background: var(--leaf-soft); border-color: var(--leaf); box-shadow: 0 5px 0 var(--leaf); }
+.choice.wrong { background: var(--oops-soft); border-color: var(--oops); box-shadow: none; opacity: .65; animation: shake .35s; }
+.choice:disabled { cursor: default; }
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 340px; margin-inline: auto; width: 100%; }
+.key { border: 0; background: var(--paper); border: 3px solid var(--line-strong); border-radius: 16px; font-family: var(--display); font-weight: 800; font-size: 1.9rem; padding: 6px 0; box-shadow: 0 4px 0 var(--line-strong); }
+.key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line-strong); }
+.key.del { font-size: 1.3rem; color: var(--oops); }
+.key.ok { background: var(--leaf); border-color: var(--leaf); color: #fff; box-shadow: 0 4px 0 #1f6e44; font-size: 1.3rem; }
+
+.bubble { display: flex; gap: 12px; align-items: center; min-height: 64px; }
+.bubble .who { font-size: 2.4rem; flex: none; }
+.bubble .say { background: var(--paper); border: 2px solid var(--line-strong); border-radius: 18px; padding: 10px 14px; font-weight: 700; position: relative; flex: 1; min-width: 0; line-height: 1.4; }
+.bubble .say::before { content: ""; position: absolute; left: -10px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right-color: var(--line-strong); border-left: 0; }
+.bubble.good .say { background: var(--leaf-soft); border-color: var(--leaf); }
+.bubble.bad .say { background: var(--oops-soft); border-color: var(--oops); }
+.hint { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.next-row { display: flex; justify-content: center; }
+
+/* --- Fin, album, parents --- */
+.center { text-align: center; }
+.result { padding: 26px 18px; display: grid; gap: 16px; justify-items: center; }
+.result h2 { font-size: clamp(2rem, 7vw, 2.8rem); }
+.bigstars { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: 2rem; }
+.bigstars .off { filter: grayscale(1); opacity: .25; }
+.bigstars span { animation: pop .4s backwards; }
+.newsticker { font-size: 5rem; animation: wobble 1s ease-in-out 2; }
+.row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.album { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 10px; padding: 18px; }
+.slot { aspect-ratio: 1; max-width: 100%; border-radius: 18px; display: grid; place-items: center; font-size: 2.6rem; background: var(--paper); border: 3px dashed var(--line-strong); }
+.slot.on { border: 3px solid var(--pencil); background: #fff8e1; }
+.slot.off { font-family: var(--display); font-size: 1.6rem; color: var(--line-strong); }
+.meter { height: 18px; background: var(--paper); border: 2px solid var(--line-strong); border-radius: 999px; overflow: hidden; width: min(360px, 100%); }
+.meter > i { display: block; height: 100%; background: var(--pencil); border-radius: 999px; }
+.parents { padding: 18px; display: grid; gap: 14px; }
+.parents p { margin: 0; line-height: 1.5; max-width: 62ch; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+th { font-family: var(--display); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+td.num { text-align: right; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: .85rem; }
+.pill.g { background: var(--leaf-soft); color: var(--leaf); }
+.pill.m { background: #fff3cd; color: #8a6400; }
+.pill.b { background: var(--oops-soft); color: var(--oops); }
+.muted { color: var(--ink-soft); }
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 10; width: 100%; height: 100%; }
+
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@keyframes pop { from { transform: scale(0); } 70% { transform: scale(1.3); } to { transform: scale(1); } }
+@keyframes wobble { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-10deg) scale(1.1); } 75% { transform: rotate(10deg) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media (max-width: 480px) {
+  body::before { left: 8px; }
+  .frame { grid-template-columns: repeat(5, 30px); grid-template-rows: repeat(2, 30px); }
+  .frame .cell { font-size: 1.15rem; }
+  .bar { height: 112px; width: 12px; background-size: 100% 11.2px; }
+  .plate { width: 64px; height: 64px; background-size: 6.4px 6.4px; }
+  .choice { font-size: 1.7rem; }
+}
+</style>
+</head>
+<body>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<main class="wrap">
+
+  <!-- ACCUEIL -->
+  <section id="home">
+    <div class="top">
+      <div class="brand">
+        <h1>Le Cahier des <span>Nombres</span></h1>
+        <span class="tag">Maths CP · CE1</span>
+      </div>
+      <button class="star-pill" id="homeStars" type="button" title="Voir mon album">
+        <span class="s">★</span><span id="starTotal">0</span>
+      </button>
+    </div>
+
+    <div class="sheet hello">
+      <div class="hello-row">
+        <div class="avatar-big" id="avatarBig" aria-hidden="true">🦊</div>
+        <div class="grow">
+          <label for="nameInput">Ton prénom</label>
+          <input type="text" id="nameInput" maxlength="16" placeholder="Écris ton prénom" autocomplete="off">
+        </div>
+      </div>
+      <div class="avatars" id="avatars" role="group" aria-label="Choisis ton compagnon"></div>
+      <div class="hello-row">
+        <div class="seg" role="group" aria-label="Ma classe">
+          <button type="button" data-level="cp" id="lvlCp">CP</button>
+          <button type="button" data-level="ce1" id="lvlCe1">CE1</button>
+        </div>
+        <div class="toggles">
+          <button type="button" class="chip" id="soundToggle">🔔 Sons</button>
+          <button type="button" class="chip" id="voiceToggle">🗣️ Lire à voix haute</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title" id="greeting">Choisis un jeu</h2>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="footer-links">
+      <button class="btn ghost small" type="button" id="toAlbum">🏅 Mon album d'autocollants</button>
+      <button class="btn ghost small" type="button" id="toParents">👪 Espace parents</button>
+    </div>
+  </section>
+
+  <!-- JEU -->
+  <section id="game" hidden>
+    <div class="gamebar">
+      <button class="btn ghost small" type="button" id="quit">← Menu</button>
+      <div class="dots" id="dots" aria-label="Progression"></div>
+      <span class="star-pill"><span class="s">★</span><span id="roundStars">0</span></span>
+    </div>
+    <div class="sheet qcard">
+      <div class="qhead">
+        <span class="qlabel" id="qlabel"></span>
+        <button class="speak" type="button" id="speakBtn" title="Écouter la question" aria-label="Écouter la question">🔊</button>
+      </div>
+      <div class="prompt" id="prompt"></div>
+      <div class="visual" id="visual"></div>
+      <div id="answer"></div>
+      <div class="bubble" id="bubble" aria-live="polite">
+        <span class="who" id="who">🦊</span>
+        <div class="say" id="say"></div>
+      </div>
+      <div class="next-row" id="nextRow" hidden><button class="btn" type="button" id="nextBtn">Continuer →</button></div>
+    </div>
+  </section>
+
+  <!-- FIN DE PARTIE -->
+  <section id="end" hidden>
+    <div class="sheet result center">
+      <div style="font-size:3.4rem" id="endWho">🦊</div>
+      <h2 id="endTitle">Bravo !</h2>
+      <div class="bigstars" id="endStars"></div>
+      <p id="endText" style="margin:0;font-weight:700"></p>
+      <div id="endSticker" hidden class="center">
+        <div class="tag">Nouvel autocollant !</div>
+        <div class="newsticker" id="endStickerIco"></div>
+      </div>
+      <div class="row">
+        <button class="btn" type="button" id="again">↻ Rejouer</button>
+        <button class="btn ghost" type="button" id="toMenu">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALBUM -->
+  <section id="albumView" hidden>
+    <div class="gamebar">
+      <button class="btn ghost small" type="button" data-back>← Menu</button>
+      <span class="star-pill"><span class="s">★</span><span id="albumStars">0</span></span>
+    </div>
+    <h2 class="section-title">Mon album</h2>
+    <div class="sheet" style="padding:18px;display:grid;gap:10px;justify-items:center;margin-bottom:14px">
+      <p style="margin:0;font-weight:700" id="albumNext"></p>
+      <div class="meter"><i id="albumMeter"></i></div>
+    </div>
+    <div class="sheet album" id="album"></div>
+  </section>
+
+  <!-- PARENTS -->
+  <section id="parentsView" hidden>
+    <div class="gamebar">
+      <button class="btn ghost small" type="button" data-back>← Menu</button>
+    </div>
+    <div class="sheet parents">
+      <h2>Espace parents</h2>
+      <p>Chaque partie compte 10 questions. Une étoile est gagnée quand l'enfant trouve du premier coup. En cas d'erreur, une aide visuelle apparaît et l'enfant peut réessayer. La difficulté s'adapte toute seule : elle monte après 3 bonnes réponses d'affilée et redescend après 2 erreurs.</p>
+      <p class="muted">Les progrès sont enregistrés uniquement sur cet appareil.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Jeu</th><th>Classe</th><th>Parties</th><th>Questions</th><th>Du 1er coup</th><th>Niveau</th></tr></thead>
+          <tbody id="statsBody"></tbody>
+        </table>
+      </div>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn ghost small" type="button" id="resetBtn">Tout effacer</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Outils ================= */
+const $ = s => document.querySelector(s);
+const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+const BLANK = '<span class="blank">?</span>';
+const ROUND = 10;
+
+function choicesAround(ans, spread = 3, min = 0, extra = []) {
+  const set = new Set([ans]);
+  extra.forEach(v => { if (v >= min && v !== ans && set.size < 4) set.add(v); });
+  let guard = 0;
+  while (set.size < 4 && guard++ < 200) {
+    const v = ans + rand(-spread, spread);
+    if (v >= min) set.add(v);
+  }
+  return shuffle([...set]);
+}
+
+/* ================= Sauvegarde ================= */
+const KEY = 'cahier-des-nombres-v1';
+const defaults = () => ({ name: '', avatar: '🦊', level: 'cp', sound: true, voice: false, stars: 0, stickers: [], stats: {} });
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === 'object') return Object.assign(defaults(), s); } catch (e) {}
+  return defaults();
+}
+let save = load();
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+function statFor(level, id) {
+  const k = level + ':' + id;
+  if (!save.stats[k]) save.stats[k] = { played: 0, asked: 0, first: 0, diff: 0, best: 0 };
+  return save.stats[k];
+}
+
+/* ================= Sons et voix ================= */
+let ac = null;
+function tone(freq, start, dur, type = 'sine', vol = 0.16) {
+  if (!save.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + start, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) {}
+}
+const sfx = {
+  good() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.08, 0.22, 'triangle')); },
+  bad() { tone(330, 0, 0.2, 'sine', 0.12); tone(262, 0.18, 0.3, 'sine', 0.12); },
+  tap() { tone(880, 0, 0.06, 'sine', 0.06); },
+  win() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.12, 0.3, 'triangle')); }
+};
+const canSpeak = 'speechSynthesis' in window;
+function say(text) {
+  if (!canSpeak || !text) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'fr-FR'; u.rate = 0.9;
+    const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ================= Images ================= */
+const THINGS = [
+  ['🍎', 'pommes'], ['🐞', 'coccinelles'], ['⭐', 'étoiles'], ['🐟', 'poissons'], ['🌸', 'fleurs'],
+  ['🚗', 'voitures'], ['🍓', 'fraises'], ['🐥', 'poussins'], ['🎈', 'ballons'], ['🦋', 'papillons']
+];
+const objs = (n, e, gone = 0) => '<div class="objs">' + Array.from({ length: n }, (_, i) => `<span class="${i >= n - gone ? 'gone' : ''}">${e}</span>`).join('') + '</div>';
+// Boîtes de 10 : n objets « e », suivis éventuellement de m objets « e2 » (pour montrer une addition).
+function tenFrames(n, e, frames, m = 0, e2 = '') {
+  frames = frames || Math.max(1, Math.ceil((n + m) / 10));
+  let h = '';
+  for (let f = 0; f < frames; f++) {
+    h += '<div class="frame">';
+    for (let i = 0; i < 10; i++) {
+      const k = f * 10 + i;
+      h += k < n ? `<span class="cell">${e}</span>` : k < n + m ? `<span class="cell">${e2}</span>` : '<span class="cell empty"></span>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
+function base10(n) {
+  const c = Math.floor(n / 100), d = Math.floor(n / 10) % 10, u = n % 10;
+  let h = '<div class="b10">';
+  if (c) h += `<div class="col"><div class="pack">${'<span class="plate"></span>'.repeat(c)}</div><div class="lbl">centaines</div></div>`;
+  h += `<div class="col"><div class="pack">${'<span class="bar"></span>'.repeat(d)}</div><div class="lbl">dizaines</div></div>`;
+  h += `<div class="col"><div class="cubes">${'<span class="cube"></span>'.repeat(u)}</div><div class="lbl">unités</div></div>`;
+  return h + '</div>';
+}
+const money = pieces => pieces.map(v => v <= 2 ? `<span class="coin c${v}"><b>${v}</b><small>€</small></span>` : `<span class="bill b${v}">${v} €</span>`).join('');
+const groups = (g, n, e) => Array.from({ length: g }, () => `<div class="group">${e.repeat(n)}</div>`).join('');
+const dotArray = (rows, cols) => `<div class="array" style="grid-template-columns:repeat(${cols},18px)">${'<span></span>'.repeat(rows * cols)}</div>`;
+
+/* ================= Générateurs de questions =================
+   Chaque générateur reçoit (niveau, difficulté 0..2) et renvoie :
+   { label, prompt, speak, visual, answer, input:'keypad'|'choices', choices?, hint, explain, story? } */
+const GEN = {};
+
+GEN.compter = (L, d) => {
+  const [e, name] = pick(THINGS);
+  const R = L === 'cp' ? [[2, 6], [5, 12], [10, 20]][d] : [[10, 30], [20, 50], [30, 60]][d];
+  const n = rand(R[0], R[1]);
+  return {
+    label: 'Compter', prompt: `Combien de ${name} ?`, speak: `Combien de ${name} ?`,
+    visual: n <= 6 && d === 0 ? objs(n, e) : tenFrames(n, e),
+    answer: n, input: 'choices',
+    choices: L === 'cp' ? choicesAround(n, 2, 1) : choicesAround(n, 2, 1, [n + 10, n - 10]),
+    hint: n > 10 ? 'Chaque boîte pleine contient 10. Compte les boîtes pleines de 10 en 10, puis ajoute le reste.' : 'Touche chaque objet avec ton doigt en comptant.',
+    explain: `Il y en a ${n}.`
+  };
+};
+
+GEN.addition = (L, d) => {
+  let a, b, [e, name] = pick(THINGS), vis = '';
+  if (L === 'cp') {
+    if (d === 0) { a = rand(1, 6); b = rand(1, 10 - a); }
+    else if (d === 1) { a = rand(5, 12); b = rand(2, Math.min(9, 20 - a)); }
+    else if (Math.random() < .5) { a = rand(1, 5) * 10; b = rand(1, 9 - a / 10) * 10; }
+    else { a = rand(1, 4) * 10 + rand(0, 5); b = rand(1, 9 - a % 10); }
+    if (a + b <= 10) vis = objs(a, e) + '<span class="op">+</span>' + objs(b, e);
+  } else {
+    if (d === 0) { a = rand(1, 8) * 10 + rand(0, 6); b = rand(1, 9 - a % 10); }
+    else if (d === 1) {
+      if (Math.random() < .5) { a = rand(1, 8) * 10 + rand(3, 9); b = rand(10 - a % 10, 9); }
+      else { a = rand(11, 59); b = rand(1, 3) * 10; }
+    } else { a = rand(12, 58); b = rand(11, Math.min(41, 99 - a)); }
+  }
+  const s = a + b;
+  return {
+    label: 'Addition', prompt: `${a} + ${b} = ${BLANK}`, speak: `${a} plus ${b}, ça fait combien ?`, visual: vis,
+    answer: s, input: 'keypad',
+    hint: s <= 20 && L === 'cp' ? `Pars de ${Math.max(a, b)} et avance de ${Math.min(a, b)} sur tes doigts.` : `Ajoute d'abord les dizaines, puis les unités.`,
+    hintVisual: s <= 20 ? tenFrames(a, '🔴', s > 10 ? 2 : 1, b, '🔵') : base10(a) + '<span class="op">+</span>' + base10(b),
+    explain: `${a} + ${b} = ${s}`
+  };
+};
+
+GEN.soustraction = (L, d) => {
+  let a, b, [e] = pick(THINGS), vis = '';
+  if (L === 'cp') {
+    if (d === 0) { a = rand(3, 10); b = rand(1, a - 1); vis = objs(a, e, b); }
+    else if (d === 1) { a = rand(11, 20); b = rand(1, Math.min(9, a - 1)); }
+    else if (Math.random() < .5) { a = rand(3, 9) * 10; b = rand(1, a / 10 - 1) * 10; }
+    else { a = rand(2, 9) * 10 + rand(3, 9); b = rand(1, a % 10); }
+  } else {
+    if (d === 0) { a = rand(2, 9) * 10 + rand(3, 9); b = rand(1, a % 10); }
+    else if (d === 1) {
+      if (Math.random() < .5) { a = rand(2, 9) * 10 + rand(0, 6); b = rand(a % 10 + 1, 9); }
+      else { a = rand(35, 99); b = rand(1, Math.floor(a / 10) - 1) * 10; }
+    } else { a = rand(40, 99); b = rand(11, a - 10); }
+  }
+  const r = a - b;
+  return {
+    label: 'Soustraction', prompt: `${a} − ${b} = ${BLANK}`, speak: `${a} moins ${b}, ça fait combien ?`, visual: vis,
+    answer: r, input: 'keypad',
+    hint: a <= 20 ? `Recule de ${b} à partir de ${a}, ou cherche : ${b} + ? = ${a}.` : `Enlève d'abord les dizaines, puis les unités. Tu peux aussi chercher : ${b} + ? = ${a}.`,
+    hintVisual: a <= 20 ? objs(a, '🔵', b) : base10(a),
+    explain: `${a} − ${b} = ${r}`
+  };
+};
+
+GEN.complement = (L, d) => {
+  let a, t, vis = '';
+  if (L === 'cp') {
+    if (d < 2) { t = 10; a = rand(1, 9); vis = d === 0 ? tenFrames(a, '🟡', 1) : ''; }
+    else { t = 20; a = rand(11, 19); }
+  } else {
+    if (d === 0) { t = 100; a = rand(1, 9) * 10; }
+    else if (d === 1) { a = rand(11, 89); if (a % 10 === 0) a++; t = Math.ceil(a / 10) * 10; }
+    else { t = 100; a = rand(11, 89); if (a % 10 === 0) a += 3; }
+  }
+  return {
+    label: 'Pour aller à ' + t, prompt: `${a} + ${BLANK} = ${t}`, speak: `Combien faut-il ajouter à ${a} pour avoir ${t} ?`, visual: vis,
+    answer: t - a, input: 'keypad',
+    hint: t <= 20 ? 'Compte les cases vides !' : (t === 100 && a % 10 ? `Va d'abord à la dizaine suivante (${Math.ceil(a / 10) * 10}), puis à ${t}.` : `Compte de 10 en 10 jusqu'à ${t}.`),
+    hintVisual: t <= 20 ? tenFrames(a, '🟡', t / 10) : '',
+    explain: `${a} + ${t - a} = ${t}`
+  };
+};
+
+GEN.comparer = (L, d) => {
+  let A, B, va, vb;
+  const max = L === 'cp' ? [20, 100, 20][d] : [100, 1000, 100][d];
+  if (d < 2) {
+    va = rand(0, max); vb = Math.random() < .15 ? va : Math.random() < .5 ? va + rand(-9, 9) : rand(0, max);
+    if (Math.random() < .3 && va > 10) vb = Number(String(va).split('').reverse().join('')); // chiffres inversés : piège classique
+    vb = Math.max(0, Math.min(max, vb)); A = String(va); B = String(vb);
+  } else {
+    const x = rand(1, max / 2), y = rand(1, max / 2); va = x + y;
+    vb = Math.random() < .25 ? va : va + pick([-2, -1, 1, 2]);
+    A = `${x} + ${y}`; B = String(vb);
+  }
+  const ans = va < vb ? '<' : va > vb ? '>' : '=';
+  return {
+    label: 'Comparer', prompt: `${A} ${BLANK} ${B}`, speak: `Quel signe faut-il mettre entre ${A.replace('+', 'plus')} et ${B} ?`,
+    visual: '', answer: ans, input: 'choices', symbols: true,
+    choices: [['<', 'plus petit'], ['=', 'égal'], ['>', 'plus grand']],
+    hint: 'Le crocodile ouvre sa grande bouche 🐊 du côté du nombre le plus grand. Regarde d\'abord les centaines, puis les dizaines, puis les unités.',
+    hintVisual: d < 2 && max <= 100 ? base10(va) + '<span class="op">?</span>' + base10(vb) : '',
+    explain: `${A} ${ans} ${B}`
+  };
+};
+
+GEN.dizaines = (L, d) => {
+  let n, q;
+  if (L === 'cp') n = d === 0 ? rand(11, 39) : rand(20, 99);
+  else n = d === 0 ? rand(20, 99) : rand(101, 999);
+  const swap = Number(String(n).split('').reverse().join(''));
+  if (d < 2) {
+    q = { prompt: 'Quel nombre est-ce ?', speak: 'Quel nombre est représenté ?', visual: base10(n), answer: n, input: 'choices',
+      choices: choicesAround(n, 1, 1, [swap !== n && swap > 0 ? swap : n + 10, n + 10, n - 10, n + 100].filter(v => v > 0)) };
+  } else {
+    const ask = L === 'ce1' && Math.random() < .4 ? 'centaines' : 'dizaines';
+    const digit = ask === 'centaines' ? Math.floor(n / 100) : Math.floor(n / 10) % 10;
+    q = { prompt: `Dans <b>${n}</b>, quel est le chiffre des ${ask} ?`, speak: `Dans ${n}, quel est le chiffre des ${ask} ?`, visual: '', answer: digit, input: 'choices',
+      choices: (() => { const c = new Set([digit, ...String(n).split('').map(Number)]); while (c.size < 4) c.add(rand(0, 9)); return shuffle([...c]); })() };
+    q.hintVisual = base10(n);
+  }
+  return Object.assign({ label: 'Dizaines et unités', hint: `Une barre = 10 (une dizaine). Un petit cube = 1 (une unité).${n > 99 ? ' Une plaque = 100 (une centaine).' : ''}`, explain: `${n} = ${n >= 100 ? plural(Math.floor(n / 100), 'centaine') + ', ' : ''}${plural(Math.floor(n / 10) % 10, 'dizaine')} et ${plural(n % 10, 'unité')}` }, q);
+};
+
+GEN.suite = (L, d) => {
+  let step, start;
+  if (L === 'cp') {
+    step = [1, pick([1, 2]), pick([10, -1, 2])][d];
+    start = step === 10 ? rand(0, 9) : step < 0 ? rand(8, 30) : rand(0, d === 0 ? 14 : 80);
+  } else {
+    step = [pick([2, 5]), pick([10, -2]), pick([100, -10, 5, -5])][d];
+    if (Math.abs(step) === 5) start = rand(0, 18) * 5;
+    else if (step === 100) start = rand(0, 5) * 100 + rand(1, 99);
+    else if (step === -10) start = rand(60, 99);
+    else if (step === -2) start = rand(20, 60);
+    else start = rand(0, 60);
+  }
+  if (step < 0) start = Math.max(start, -4 * step); // un train qui recule ne descend jamais sous 0
+  const seq = Array.from({ length: 5 }, (_, i) => start + i * step);
+  const miss = rand(1, 4), ans = seq[miss];
+  const wag = seq.map((v, i) => `<span class="wagon${i === 0 ? ' loco' : ''}">${i === miss ? BLANK : v}</span>`).join('');
+  const word = step > 0 ? `on avance de ${step} en ${step}` : `on recule de ${-step} en ${-step}`;
+  return {
+    label: 'Le train des nombres', prompt: `<div class="train">${wag}</div>`, speak: `Quel nombre manque dans le train ? ${seq.map((v, i) => i === miss ? 'quoi' : v).join(', ')}.`,
+    visual: '', answer: ans, input: 'choices',
+    choices: choicesAround(ans, 2, 0, [ans + step, ans - step, ans + 1, ans - 1].filter(v => v !== ans)),
+    hint: `Regarde deux wagons qui se suivent : ${word}.`, explain: `Dans ce train, ${word}. Il manquait ${ans}.`
+  };
+};
+
+GEN.doubles = (L, d) => {
+  const half = d === 2;
+  let n;
+  if (L === 'cp') n = half ? rand(1, 10) * 2 : rand(1, d === 0 ? 5 : 10);
+  else n = half ? rand(5, 50) * 2 : d === 0 ? rand(5, 15) : rand(10, 50);
+  const [e] = pick(THINGS);
+  return half ? {
+    label: 'Moitié', prompt: `La moitié de ${n}, c'est ${BLANK}`, speak: `Quelle est la moitié de ${n} ?`, visual: n <= 12 ? objs(n, e) : '',
+    answer: n / 2, input: 'keypad', hint: `Partage ${n} en deux parts égales. Quel nombre plus lui-même fait ${n} ?`,
+    hintVisual: n <= 20 ? groups(2, n / 2, e) : '', explain: `${n / 2} + ${n / 2} = ${n}, donc la moitié de ${n} est ${n / 2}.`
+  } : {
+    label: 'Double', prompt: `Le double de ${n}, c'est ${BLANK}`, speak: `Quel est le double de ${n} ?`, visual: n <= 6 ? groups(2, n, e) : '',
+    answer: n * 2, input: 'keypad', hint: `Le double, c'est ${n} + ${n}.`, hintVisual: n <= 10 ? groups(2, n, e) : '',
+    explain: `${n} + ${n} = ${n * 2}`
+  };
+};
+
+GEN.multiplier = (L, d) => {
+  const [e, name] = pick(THINGS);
+  if (L === 'cp') {
+    const g = rand(2, d === 0 ? 3 : 4), n = rand(2, d === 2 ? 5 : 3);
+    return {
+      label: 'Les groupes', prompt: `${g} groupes de ${n} ${name}. Combien en tout ?`, speak: `Il y a ${g} groupes de ${n} ${name}. Combien de ${name} en tout ?`,
+      visual: groups(g, n, e), answer: g * n, input: 'choices', choices: choicesAround(g * n, 3, 1, [g + n]),
+      hint: `Compte ${n} par ${n} : ${Array.from({ length: g }, (_, i) => n * (i + 1)).join(', ')}…`, explain: `${Array(g).fill(n).join(' + ')} = ${g * n}`
+    };
+  }
+  const t = pick([[2, 10], [5, 3], [4, 2, 3, 5, 10]][d]), k = rand(1, 10);
+  return {
+    label: 'Table de ' + t, prompt: `${k} × ${t} = ${BLANK}`, speak: `${k} fois ${t}, ça fait combien ?`, visual: d === 0 ? dotArray(k, t) : '',
+    answer: k * t, input: 'keypad', hint: `${k} × ${t}, c'est ${k} fois le nombre ${t} : ${Array(Math.min(k, 6)).fill(t).join(' + ')}${k > 6 ? ' + …' : ''}`,
+    hintVisual: dotArray(k, t), explain: `${k} × ${t} = ${k * t}`
+  };
+};
+
+GEN.monnaie = (L, d) => {
+  const allowed = L === 'cp' ? [[1, 2], [1, 2, 5], [1, 2, 5, 10]][d] : [[1, 2, 5, 10], [1, 2, 5, 10, 20, 50], [5, 10, 20]][d];
+  const max = L === 'cp' ? [10, 20, 30][d] : [50, 100, 100][d];
+  if (L === 'ce1' && d === 2) {
+    const pay = pick([10, 20, 50]), price = rand(2, pay - 1);
+    const item = pick(['un livre', 'un ballon', 'une peluche', 'un jeu de cartes', 'une boîte de feutres']);
+    return {
+      label: 'Rendre la monnaie', prompt: `Tu achètes ${item} à <b>${price} €</b>. Tu paies avec ce billet. Combien le marchand te rend-il ?`, story: true,
+      speak: `Tu achètes ${item} à ${price} euros. Tu paies avec un billet de ${pay} euros. Combien le marchand te rend-il ?`,
+      visual: money([pay]), answer: pay - price, input: 'keypad', hint: `Cherche : ${price} + ? = ${pay}. Avance d'abord jusqu'à la dizaine.`,
+      explain: `${price} + ${pay - price} = ${pay}, on te rend ${pay - price} €.`
+    };
+  }
+  const pieces = []; let sum = 0, tries = 0;
+  const target = rand(Math.ceil(max / 3), max);
+  while (sum < target && tries++ < 40) { const v = pick(allowed); if (sum + v <= max) { pieces.push(v); sum += v; } }
+  if (!pieces.length) { pieces.push(allowed[0]); sum = allowed[0]; }
+  pieces.sort((a, b) => b - a);
+  return {
+    label: 'La monnaie', prompt: 'Combien d\'euros y a-t-il ?', speak: 'Combien d\'euros y a-t-il en tout ?', visual: money(pieces),
+    answer: sum, input: 'keypad', hint: 'Commence par les billets, les plus gros, puis ajoute les pièces une par une.',
+    explain: `${pieces.join(' + ')} = ${sum} €`
+  };
+};
+
+const KIDS = [['Léa', 'elle'], ['Tom', 'il'], ['Inès', 'elle'], ['Noah', 'il'], ['Jade', 'elle'], ['Malo', 'il'], ['Lina', 'elle'], ['Sacha', 'il'], ['Zoé', 'elle'], ['Hugo', 'il']];
+const STUFF = ['billes', 'bonbons', 'images', 'crayons', 'cartes', 'gâteaux'];
+GEN.problemes = (L, d) => {
+  const [[N, p], [M]] = shuffle(KIDS), o = pick(STUFF), P = p[0].toUpperCase() + p.slice(1);
+  const max = L === 'cp' ? [10, 20, 30][d] : [40, 70, 100][d];
+  const kinds = L === 'cp' ? (d === 0 ? ['ajout', 'retrait'] : ['ajout', 'retrait', 'reunion', 'plus']) : (d < 2 ? ['ajout', 'retrait', 'reunion', 'plus', 'ecart', 'fois'] : ['ecart', 'fois', 'partage', 'retrait']);
+  const k = pick(kinds);
+  let text, ans, explain;
+  if (k === 'ajout') { const a = rand(2, max - 2), b = rand(1, max - a); text = `${N} a ${a} ${o}. ${P} en gagne ${b}. Combien de ${o} a-t-${p} maintenant ?`; ans = a + b; explain = `${a} + ${b} = ${ans}`; }
+  else if (k === 'retrait') { const a = rand(3, max), b = rand(1, a - 1); text = `${N} a ${a} ${o}. ${P} en donne ${b} à ${M}. Combien de ${o} lui reste-t-il ?`; ans = a - b; explain = `${a} − ${b} = ${ans}`; }
+  else if (k === 'reunion') { const a = rand(1, max - 2), b = rand(1, max - a); text = `${N} a ${a} ${o}. ${M} en a ${b}. Combien de ${o} ont-ils ensemble ?`; ans = a + b; explain = `${a} + ${b} = ${ans}`; }
+  else if (k === 'plus') { const a = rand(1, max - 3), b = rand(2, Math.min(9, max - a)); text = `${N} a ${a} ${o}. ${M} en a ${b} de plus. Combien de ${o} a ${M} ?`; ans = a + b; explain = `${a} + ${b} = ${ans}`; }
+  else if (k === 'ecart') { const a = rand(2, max - 5), b = rand(a + 2, max); text = `${N} a ${a} ${o}. ${M} en a ${b}. Combien de ${o} ${M} a-t-il ou elle de plus que ${N} ?`; ans = b - a; explain = `${a} + ${ans} = ${b}`; }
+  else if (k === 'fois') { const a = rand(2, 5), b = pick([2, 3, 4, 5, 10]); text = `Il y a ${a} boîtes. Dans chaque boîte, il y a ${b} ${o}. Combien de ${o} y a-t-il en tout ?`; ans = a * b; explain = `${a} × ${b} = ${ans}`; }
+  else { const a = pick([2, 3, 4, 5]), b = rand(2, 6); text = `${N} partage ${a * b} ${o} entre ${a} amis. Chacun en reçoit autant. Combien de ${o} chaque ami reçoit-il ?`; ans = b; explain = `${a} × ${b} = ${a * b}, donc chacun reçoit ${b} ${o}.`; }
+  text = text.replace(' a-t-il ou elle', ' a-t-' + (KIDS.find(x => x[0] === M)[1]));
+  return {
+    label: 'Problème', prompt: text, story: true, speak: text, visual: '', answer: ans, input: 'keypad',
+    hint: k === 'partage' ? 'Fais des parts égales : distribue un par un à chaque ami.' : k === 'fois' ? 'Ajoute le même nombre plusieurs fois.' : k === 'retrait' ? 'Il en a moins qu\'avant : c\'est une soustraction.' : k === 'ecart' ? 'Cherche combien il faut ajouter au plus petit nombre pour arriver au plus grand.' : 'Il y en a plus à la fin : c\'est une addition.',
+    explain
+  };
+};
+
+/* ================= Jeux disponibles ================= */
+const ACTS = [
+  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10' } },
+  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue' } },
+  { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100' } },
+  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100' } },
+  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000' } },
+  { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes' } },
+  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…' } },
+  { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100' } },
+  { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10' } },
+  { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie' } },
+  { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager' } }
+];
+const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐰', '🐯', '🐨', '🦄'];
+const STICKERS = ['🐶', '🐱', '🐭', '🐹', '🐻', '🐷', '🐮', '🐵', '🐔', '🐧', '🐢', '🐙', '🦀', '🐳', '🦒', '🦓', '🦔', '🦜', '🦩', '🦕', '🦖', '🐲', '🚀', '🏆'];
+const STARS_PER_STICKER = 10;
+const CHEERS = ['Bravo !', 'Super !', 'Génial !', 'Trop fort !', 'Excellent !', 'Parfait !', 'Champion !', 'Youpi !'];
+
+/* ================= Écrans ================= */
+const screens = ['home', 'game', 'end', 'albumView', 'parentsView'];
+function show(id) { screens.forEach(s => { $('#' + s).hidden = s !== id; }); window.scrollTo(0, 0); }
+
+function renderHome() {
+  $('#starTotal').textContent = save.stars;
+  $('#avatarBig').textContent = save.avatar;
+  $('#nameInput').value = save.name;
+  $('#greeting').textContent = save.name ? `${save.name}, choisis un jeu !` : 'Choisis un jeu !';
+  $('#lvlCp').setAttribute('aria-pressed', save.level === 'cp');
+  $('#lvlCe1').setAttribute('aria-pressed', save.level === 'ce1');
+  $('#soundToggle').setAttribute('aria-pressed', save.sound);
+  $('#voiceToggle').setAttribute('aria-pressed', save.voice);
+  $('#voiceToggle').hidden = !canSpeak;
+  $('#avatars').innerHTML = AVATARS.map(a => `<button type="button" aria-pressed="${a === save.avatar}" data-av="${a}">${a}</button>`).join('');
+  $('#tiles').innerHTML = ACTS.map(a => {
+    const st = save.stats[save.level + ':' + a.id];
+    const best = st && st.played ? `★ ${st.best} / ${ROUND}` : 'Nouveau !';
+    return `<button type="button" class="tile" style="--tile:${a.c}" data-act="${a.id}">
+      <span class="ico" aria-hidden="true">${a.ico}</span><span class="nm">${a.nm[save.level]}</span>
+      <span class="ds">${a.ds[save.level]}</span><span class="best">${best}</span></button>`;
+  }).join('');
+}
+
+/* ================= Partie ================= */
+let G = null;
+function startGame(id) {
+  const st = statFor(save.level, id);
+  G = { id, level: save.level, idx: 0, stars: 0, results: [], diff: st.diff, streak: 0, errs: 0, asked: 0, first: 0 };
+  show('game');
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (!G || $('#game').hidden) return;
+  clearTimeout(G.timer);
+  if (G.idx >= ROUND) return endGame();
+  let q, guard = 0;
+  do { q = GEN[G.id](G.level, G.diff); } while (guard++ < 10 && G.last && q.prompt === G.last);
+  G.last = q.prompt;
+  G.q = q; G.tries = 0; G.typed = ''; G.locked = false;
+  renderDots();
+  $('#roundStars').textContent = G.stars;
+  $('#qlabel').textContent = `${q.label} · ${G.idx + 1} / ${ROUND}`;
+  const p = $('#prompt');
+  p.className = 'prompt' + (q.story ? ' story' : '');
+  p.innerHTML = q.prompt;
+  $('#visual').innerHTML = q.visual || '';
+  $('#who').textContent = save.avatar;
+  setBubble('', q.input === 'keypad' ? 'Tape ta réponse puis appuie sur OK.' : 'Touche la bonne réponse.');
+  $('#nextRow').hidden = true;
+  $('#speakBtn').hidden = !canSpeak;
+  renderAnswer();
+  if (save.voice) say(q.speak);
+}
+
+function renderAnswer() {
+  const q = G.q, box = $('#answer');
+  if (q.input === 'choices') {
+    const list = q.symbols ? q.choices : q.choices.map(v => [v, '']);
+    box.innerHTML = `<div class="choices">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : v}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
+  } else {
+    const hasBlank = !!$('#prompt .blank');
+    box.innerHTML = (hasBlank ? '' : `<div class="answerbox">${BLANK}</div>`) +
+      `<div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" class="key" data-k="${n}">${n}</button>`).join('')}
+      <button type="button" class="key del" data-k="del" aria-label="Effacer">⌫</button>
+      <button type="button" class="key" data-k="0">0</button>
+      <button type="button" class="key ok" data-k="ok">OK</button></div>`;
+  }
+}
+
+function blanks() { return document.querySelectorAll('#game .blank'); }
+function setBlank(txt, cls) {
+  blanks().forEach(b => { b.textContent = txt === '' ? '?' : txt; b.className = 'blank' + (txt !== '' ? ' filled' : '') + (cls ? ' ' + cls : ''); });
+}
+function setBubble(kind, html) {
+  $('#bubble').className = 'bubble' + (kind ? ' ' + kind : '');
+  $('#say').innerHTML = html;
+}
+function renderDots() {
+  $('#dots').innerHTML = Array.from({ length: ROUND }, (_, i) => {
+    const r = G.results[i];
+    return `<span class="dot ${i === G.idx ? 'now' : ''} ${r || ''}"></span>`;
+  }).join('');
+}
+
+function keyPress(k) {
+  if (!G || G.locked || G.q.input !== 'keypad') return;
+  sfx.tap();
+  if (k === 'del') G.typed = G.typed.slice(0, -1);
+  else if (k === 'ok') { if (G.typed !== '') check(G.typed); return; }
+  else if (G.typed.length < 4) G.typed = (G.typed === '0' ? '' : G.typed) + k;
+  setBlank(G.typed);
+}
+
+function check(value, btn) {
+  const q = G.q;
+  const right = String(value) === String(q.answer);
+  G.tries++;
+  if (right) {
+    G.locked = true;
+    const firstTry = G.tries === 1;
+    G.asked++;
+    if (firstTry) { G.stars++; G.first++; G.streak++; G.errs = 0; } else { G.streak = 0; }
+    G.results[G.idx] = firstTry ? 'good' : 'ok';
+    if (q.input === 'keypad' || $('#prompt .blank')) setBlank(String(q.answer), 'right');
+    if (btn) btn.classList.add('right');
+    disableChoices();
+    const cheer = pick(CHEERS);
+    setBubble('good', firstTry ? `${cheer} +1 ★` : `Oui ! ${q.explain}`);
+    sfx.good();
+    if (firstTry) confetti(24);
+    if (save.voice) say(firstTry ? cheer : 'Oui !');
+    adapt();
+    $('#roundStars').textContent = G.stars;
+    renderDots();
+    G.idx++;
+    G.timer = setTimeout(nextQuestion, firstTry ? 1300 : 2200);
+    return;
+  }
+  sfx.bad();
+  if (btn) { btn.classList.add('wrong'); btn.disabled = true; }
+  if (G.tries === 1) {
+    setBlank(String(value), 'wrong');
+    setBubble('bad', `Presque ! Essaie encore. <br>💡 ${q.hint}`);
+    if (q.hintVisual) $('#visual').innerHTML = q.hintVisual;
+    if (save.voice) say('Presque ! Essaie encore. ' + q.hint.replace(/🐊/g, ''));
+    G.typed = '';
+    setTimeout(() => { if (G && G.q === q && !G.locked) setBlank(''); }, 900);
+    return;
+  }
+  // Deuxième erreur : on montre la solution, sans gronder.
+  G.locked = true; G.asked++;
+  G.streak = 0; G.errs++;
+  G.results[G.idx] = 'miss';
+  setBlank(String(q.answer), 'right');
+  disableChoices(true);
+  setBubble('bad', `La bonne réponse est <b>${escapeSym(q.answer)}</b>. ${q.explain.replace(/[^.!]$/, '$&.')} <br>Ce n'est pas grave, on apprend en se trompant !`);
+  if (save.voice) say('La bonne réponse est ' + q.explain.replace('×', 'fois').replace('−', 'moins').replace('+', 'plus'));
+  adapt();
+  renderDots();
+  G.idx++;
+  $('#nextRow').hidden = false;
+  $('#nextBtn').focus();
+}
+const escapeSym = v => String(v).replace('<', '&lt;').replace('>', '&gt;');
+function disableChoices(showRight) {
+  document.querySelectorAll('.choice').forEach(b => { b.disabled = true; if (showRight && b.dataset.v === String(G.q.answer)) b.classList.add('right'); });
+}
+function adapt() {
+  if (G.streak >= 3 && G.diff < 2) { G.diff++; G.streak = 0; }
+  if (G.errs >= 2 && G.diff > 0) { G.diff--; G.errs = 0; }
+}
+
+function endGame() {
+  const st = statFor(G.level, G.id);
+  st.played++; st.asked += G.asked; st.first += G.first; st.diff = G.diff; st.best = Math.max(st.best, G.stars);
+  const before = Math.floor(save.stars / STARS_PER_STICKER);
+  save.stars += G.stars;
+  const after = Math.floor(save.stars / STARS_PER_STICKER);
+  let fresh = null;
+  for (let i = before; i < after && save.stickers.length < STICKERS.length; i++) { fresh = STICKERS[save.stickers.length]; save.stickers.push(fresh); }
+  persist();
+  $('#endWho').textContent = save.avatar;
+  const s = G.stars;
+  $('#endTitle').textContent = s === 10 ? 'Parfait !' : s >= 8 ? 'Bravo !' : s >= 5 ? 'Bien joué !' : 'Continue comme ça !';
+  $('#endStars').innerHTML = Array.from({ length: ROUND }, (_, i) => `<span class="${i < s ? '' : 'off'}" style="animation-delay:${i * 0.08}s">⭐</span>`).join('');
+  $('#endText').textContent = `${save.name ? save.name + ', tu' : 'Tu'} as gagné ${s} étoile${s > 1 ? 's' : ''} sur ${ROUND}.` + (G.diff === 2 ? ' Tu joues au niveau difficile !' : '');
+  $('#endSticker').hidden = !fresh;
+  $('#endStickerIco').textContent = fresh || '';
+  show('end');
+  sfx.win();
+  if (s >= 7) confetti(120);
+  if (save.voice) say($('#endTitle').textContent + ' ' + $('#endText').textContent + (fresh ? ' Tu as gagné un nouvel autocollant !' : ''));
+}
+
+/* ================= Album & parents ================= */
+function renderAlbum() {
+  $('#albumStars').textContent = save.stars;
+  const left = STARS_PER_STICKER - (save.stars % STARS_PER_STICKER);
+  $('#albumNext').textContent = save.stickers.length >= STICKERS.length ? 'Tu as tous les autocollants. Incroyable !' : `Encore ${left} étoile${left > 1 ? 's' : ''} pour le prochain autocollant.`;
+  $('#albumMeter').style.width = (save.stickers.length >= STICKERS.length ? 100 : (save.stars % STARS_PER_STICKER) / STARS_PER_STICKER * 100) + '%';
+  $('#album').innerHTML = STICKERS.map((s, i) => i < save.stickers.length ? `<div class="slot on">${s}</div>` : '<div class="slot off">?</div>').join('');
+}
+function renderParents() {
+  const rows = [];
+  ['cp', 'ce1'].forEach(L => ACTS.forEach(a => {
+    const st = save.stats[L + ':' + a.id];
+    if (!st || !st.played) return;
+    const pct = st.asked ? Math.round(st.first / st.asked * 100) : 0;
+    const cls = pct >= 80 ? 'g' : pct >= 50 ? 'm' : 'b';
+    rows.push(`<tr><td>${a.ico} ${a.nm[L]}</td><td>${L.toUpperCase()}</td><td class="num">${st.played}</td><td class="num">${st.asked}</td><td><span class="pill ${cls}">${pct} %</span></td><td>${['Facile', 'Moyen', 'Difficile'][st.diff]}</td></tr>`);
+  }));
+  $('#statsBody').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" class="muted">Aucune partie jouée pour l\'instant. Les résultats apparaîtront ici après la première partie.</td></tr>';
+  const r = $('#resetBtn'); r.dataset.armed = ''; r.textContent = 'Tout effacer';
+}
+
+/* ================= Confettis ================= */
+const cv = $('#confetti'), cx = cv.getContext('2d');
+let parts = [], raf = 0;
+function confetti(n) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  cv.width = innerWidth; cv.height = innerHeight;
+  const cols = ['#ffc93c', '#e8737a', '#4fb6ff', '#2f9d62', '#a98bff', '#ff9f6b'];
+  for (let i = 0; i < n; i++) parts.push({ x: innerWidth / 2 + rand(-60, 60), y: innerHeight * 0.45, vx: (Math.random() - .5) * 12, vy: -Math.random() * 12 - 4, r: rand(5, 9), c: pick(cols), a: Math.random() * 6, life: 70 + rand(0, 30) });
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+function tick() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  parts = parts.filter(p => p.life-- > 0);
+  parts.forEach(p => { p.vy += .35; p.x += p.vx; p.y += p.vy; p.a += .2; cx.save(); cx.translate(p.x, p.y); cx.rotate(p.a); cx.fillStyle = p.c; cx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); cx.restore(); });
+  raf = parts.length ? requestAnimationFrame(tick) : 0;
+  if (!raf) cx.clearRect(0, 0, cv.width, cv.height);
+}
+
+/* ================= Événements ================= */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.act) { sfx.tap(); startGame(t.dataset.act); }
+  else if (t.dataset.av) { save.avatar = t.dataset.av; persist(); sfx.tap(); renderHome(); }
+  else if (t.dataset.level) { save.level = t.dataset.level; persist(); sfx.tap(); renderHome(); }
+  else if (t.dataset.k) keyPress(t.dataset.k);
+  else if (t.classList.contains('choice') && G && !G.locked) check(t.dataset.v, t);
+  else if (t.hasAttribute('data-back')) { renderHome(); show('home'); }
+});
+$('#soundToggle').onclick = () => { save.sound = !save.sound; persist(); renderHome(); sfx.tap(); };
+$('#voiceToggle').onclick = () => { save.voice = !save.voice; persist(); renderHome(); if (save.voice) say('D\'accord, je lis les questions à voix haute.'); };
+$('#nameInput').addEventListener('input', e => { save.name = e.target.value.trim(); persist(); $('#greeting').textContent = save.name ? `${save.name}, choisis un jeu !` : 'Choisis un jeu !'; });
+$('#speakBtn').onclick = () => G && say(G.q.speak);
+$('#quit').onclick = () => { if (canSpeak) speechSynthesis.cancel(); if (G) clearTimeout(G.timer); G = null; renderHome(); show('home'); };
+$('#nextBtn').onclick = nextQuestion;
+$('#again').onclick = () => { if (G) startGame(G.id); };
+$('#toMenu').onclick = () => { renderHome(); show('home'); };
+$('#homeStars').onclick = $('#toAlbum').onclick = () => { renderAlbum(); show('albumView'); };
+$('#toParents').onclick = () => { renderParents(); show('parentsView'); };
+$('#resetBtn').onclick = e => {
+  const b = e.currentTarget;
+  if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Sûr ? Touchez encore pour tout effacer'; return; }
+  save = defaults(); persist(); renderParents(); renderHome();
+};
+document.addEventListener('keydown', e => {
+  if (!G || $('#game').hidden || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Enter' && e.target.tagName === 'BUTTON') return; // le bouton gère déjà son clic
+  if (/^[0-9]$/.test(e.key)) keyPress(e.key);
+  else if (e.key === 'Backspace') keyPress('del');
+  else if (e.key === 'Enter') { if (!$('#nextRow').hidden) nextQuestion(); else keyPress('ok'); }
+});
+if (canSpeak) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {} }
+
+renderHome();
+show('home');
+})();
+</script>
+</body>
+</html>
