@@ -102,6 +102,8 @@ button:focus-visible, input:focus-visible { outline: 4px solid var(--pencil); ou
 .tile .nm { font-family: var(--display); font-weight: 800; font-size: 1.3rem; }
 .tile .ds { font-size: .9rem; color: var(--ink-soft); line-height: 1.3; }
 .tile .best { font-family: var(--display); font-weight: 700; font-size: .95rem; color: var(--pencil-dark); font-variant-numeric: tabular-nums; }
+.print { padding: 18px; display: grid; gap: 12px; margin-top: 24px; }
+a.btn { text-decoration: none; display: inline-block; }
 .footer-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
 
 /* --- Jeu --- */
@@ -306,6 +308,14 @@ td.num { text-align: right; }
 
     <h2 class="section-title" id="greeting">Choisis un jeu</h2>
     <div class="tiles" id="tiles"></div>
+
+    <div class="sheet print">
+      <div>
+        <h2 class="section-title" style="margin:0">Fiches à imprimer</h2>
+        <p class="muted" style="margin:4px 0 0">Exercices, petits problèmes et corrigé pour les parents, en PDF.</p>
+      </div>
+      <div class="row" id="printLinks" style="justify-content:flex-start"></div>
+    </div>
 
     <div class="footer-links">
       <button class="btn ghost small" type="button" id="toAlbum">🏅 Mon album d'autocollants</button>
@@ -1824,6 +1834,8 @@ const ACTS_LECT = [
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐰', '🐯', '🐨', '🦄'];
 const STICKERS = ['🐶', '🐱', '🐭', '🐹', '🐻', '🐷', '🐮', '🐵', '🐔', '🐧', '🐢', '🐙', '🦀', '🐳', '🦒', '🦓', '🦔', '🦜', '🦩', '🦕', '🦖', '🐲', '🚀', '🏆'];
 const STARS_PER_STICKER = 10;
+// Adresse absolue : les liens marchent aussi depuis une copie du jeu hébergée ailleurs.
+const PDF_BASE = 'https://medrfig-hue.github.io/MRF2026/fiches/';
 const CHEERS = ['Bravo !', 'Super !', 'Génial !', 'Trop fort !', 'Excellent !', 'Parfait !', 'Champion !', 'Youpi !'];
 
 /* ================= Écrans ================= */
@@ -1843,6 +1855,8 @@ function renderHome() {
   const lect = save.subject === 'lecture';
   $('#brandWord').textContent = lect ? 'Mots' : 'Nombres';
   document.querySelectorAll('[data-subject]').forEach(b => b.setAttribute('aria-pressed', b.dataset.subject === save.subject));
+  const lv = save.level, LV = lv.toUpperCase();
+  $('#printLinks').innerHTML = ['maths', 'lecture'].map(v => `<a class="btn small${v === save.subject ? '' : ' ghost'}" href="${PDF_BASE}${lv}-${v}.pdf" target="_blank" rel="noopener">📄 ${v === 'maths' ? 'Maths' : 'Lecture'} ${LV}</a>`).join('');
   const list = lect ? ACTS_LECT.filter(a => a.nm[save.level]) : ACTS;
   $('#tiles').innerHTML = list.map(a => {
     const st = save.stats[save.level + ':' + a.id];
