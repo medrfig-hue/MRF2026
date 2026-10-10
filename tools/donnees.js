@@ -10,7 +10,7 @@ let seed = Number(process.argv[2] || 1) >>> 0;
 Math.random = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 // Le script du jeu touche au DOM en fin de fichier : on l'arrête juste avant les écrans.
-js = js.replace('/* ================= Écrans', 'globalThis.__export = () => ({ LEX, GRAPH, SENTS, PROPER, NOUNS, HOMO, HOMO_HINT, IRREG, VERBS1, conj, NOUNS_A, ADJ, SUBJ_PP, TAGGED, TAGGED_P, SYN, ANT, PREF, FAMILLES, STORIES, KIDS, STUFF, CONF, misspell, NO_COUNT });\n/*');
+js = js.replace('/* ================= Écrans', 'globalThis.__export = () => ({ LEX, GRAPH, SENTS, PROPER, NOUNS, HOMO, HOMO_HINT, IRREG, VERBS1, conj, NOUNS_A, ADJ, SUBJ_PP, TAGGED, TAGGED_P, SYN, ANT, PREF, FAMILLES, STORIES, KIDS, STUFF, CONF, misspell, NO_COUNT, RIMES, ONSETS, THINGS, FOODS, PETS });\n/*');
 const noop = () => ({});
 global.document = { querySelector: () => ({ getContext: noop, addEventListener() {}, setAttribute() {}, style: {} }), querySelectorAll: () => [], addEventListener() {} };
 global.window = { matchMedia: () => ({}) };
@@ -19,7 +19,7 @@ try { (0, eval)(js); } catch (e) { /* l'initialisation de l'interface échoue sa
 const D = globalThis.__export();
 
 const out = {
-  lex: D.LEX.map(x => ({ w: x.w, syl: x.syl, sons: x.sons, fautes: D.misspell(x.w) })),
+  lex: D.LEX.map(x => ({ w: x.w, e: x.e, syl: x.syl, sons: x.sons, fautes: D.misspell(x.w) })),
   noCount: D.NO_COUNT,
   graph: D.GRAPH.map(([pre, ans, post, bad, , rule]) => ({ pre, ans, post, bad, rule })),
   sents: D.SENTS, proper: D.PROPER,
@@ -27,6 +27,7 @@ const out = {
   homo: D.HOMO, homoHint: D.HOMO_HINT,
   conj: {}, nounsA: D.NOUNS_A, adj: D.ADJ, subjPP: D.SUBJ_PP,
   tagged: D.TAGGED, taggedP: D.TAGGED_P, syn: D.SYN, ant: D.ANT, pref: D.PREF, familles: D.FAMILLES,
+  rimes: D.RIMES, onsets: D.ONSETS, things: D.THINGS, foods: D.FOODS, pets: D.PETS,
   kids: D.KIDS, stuff: D.STUFF, conf: D.CONF,
   stories: D.STORIES.map(f => Array.from({ length: 4 }, () => f()))
 };

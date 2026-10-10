@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Fiches d'exercices à imprimer (PDF), par niveau et par volet.
 
-Produit fiches/{cp,ce1,ce2,cm1}-{maths,lecture}.pdf : deux pages d'exercices,
+Produit fiches/{gs,cp,ce1,ce2,cm1}-{maths,lecture}.pdf : deux pages d'exercices,
 une page de petits problèmes (maths) ou de textes à comprendre (lecture),
 puis un corrigé pour les parents.
 
 Les mots, phrases, histoires et conjugaisons viennent du jeu lui-même
-(index.html), lus par tools/donnees.js : il faut Node.js et reportlab.
+(index.html), lus par tools/donnees.js : il faut Node.js, reportlab, Pillow
+et, pour les images de Grande Section, la police Noto Color Emoji.
 
     python3 tools/fiches.py            # série 1
     python3 tools/fiches.py --serie 2  # autres nombres, autres mots
 """
 import argparse
+import io
 import json
 import random
 import subprocess
@@ -19,7 +21,7 @@ from pathlib import Path
 
 from reportlab.lib.colors import HexColor, white
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import simpleSplit
+from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -37,7 +39,7 @@ PALE = HexColor('#eef1fb')
 LINE = HexColor('#c9d2ef')
 W, H = A4
 M = 42  # marge
-NIVEAUX = {'cp': 'CP', 'ce1': 'CE1', 'ce2': 'CE2', 'cm1': 'CM1'}
+NIVEAUX = {'cp': 'CP', 'ce1': 'CE1', 'ce2': 'CE2', 'cm1': 'CM1', 'gs': 'GS'}
 SITE = 'medrfig-hue.github.io/MRF2026'
 
 
@@ -91,7 +93,7 @@ class Fiche:
     """Une fiche A4 : en-tête, exercices numérotés qui passent à la page suivante si besoin, corrigé."""
 
     def __init__(self, path, niveau, volet):
-        self.c = canvas.Canvas(str(path), pagesize=A4)
+        self.c = canvas.Canvas(str(path), pagesize=A4, invariant=1)
         self.c.setTitle(f'Le Cahier des Nombres – {NIVEAUX[niveau]} – {volet}')
         self.c.setAuthor('Le Cahier des Nombres')
         self.niveau, self.volet = niveau, volet
@@ -128,7 +130,7 @@ class Fiche:
         self.y = H - M - 82
 
     def tag(self):
-        short = {'Exercices': 'Exercice', 'Petits problèmes': 'Problème', 'Je lis et je comprends': 'Texte'}
+        short = {'Exercices': 'Exercice', 'Petits problèmes': 'Problème', 'Je lis et je comprends': 'Texte', "J'écoute et je comprends": 'Écoute'}
         return f'{short.get(self.part, self.part)} {self.num}'
 
     def need(self, h):
@@ -417,6 +419,307 @@ class Fiche:
 
 
 # =====================================================================
+# GRANDE SECTION : l'enfant ne lit pas encore, un adulte lit les consignes.
+# Les images sont des emojis Noto dessinés en PNG (police système Noto Color Emoji).
+# =====================================================================
+EMOJI_FONT = Path('/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf')
+_EMOJI = {}
+
+
+def emoji_img(ch):
+    if ch not in _EMOJI:
+        from PIL import Image, ImageDraw, ImageFont
+        font = ImageFont.truetype(str(EMOJI_FONT), 109)
+        im = Image.new('RGBA', (160, 140), (0, 0, 0, 0))
+        ImageDraw.Draw(im).text((4, 4), ch, font=font, embedded_color=True)
+        im = im.crop(im.getbbox())
+        buf = io.BytesIO()
+        im.save(buf, 'PNG')
+        buf.seek(0)
+        _EMOJI[ch] = ImageReader(buf)
+    return _EMOJI[ch]
+
+
+def pic(F, ch, x, y, size):
+    """Dessine une image (emoji) dont le coin haut gauche est en (x, y)."""
+    F.c.drawImage(emoji_img(ch), x, y - size, size, size, mask='auto', preserveAspectRatio=True, anchor='c')
+
+
+def shape(F, name, x, y, s=40, fill=None):
+    c = F.c
+    c.setStrokeColor(INK)
+    c.setLineWidth(2)
+    c.setFillColor(fill or white)
+    if name == 'rond':
+        c.circle(x + s / 2, y - s / 2, s / 2 - 2, fill=1, stroke=1)
+    elif name == 'carré':
+        c.rect(x + 3, y - s + 3, s - 6, s - 6, fill=1, stroke=1)
+    elif name == 'rectangle':
+        c.rect(x, y - s * 0.72, s * 1.3, s * 0.45, fill=1, stroke=1)
+    else:
+        p = c.beginPath()
+        p.moveTo(x + s / 2, y - 2)
+        p.lineTo(x + s - 2, y - s + 2)
+        p.lineTo(x + 2, y - s + 2)
+        p.close()
+        c.drawPath(p, fill=1, stroke=1)
+    c.setLineWidth(1)
+
+
+def gs_maths(F, R, D):
+    things = D['things']
+    rows = [(R.choice(things), R.randint(1, 10)) for _ in range(4)]
+    F.ex('Compte les images et entoure le bon nombre.', 4 * 46, ' · '.join(str(n) for _, n in rows))
+    for (e, _), n in rows:
+        F.need(46)
+        for k in range(n):
+            pic(F, e[0], M + 10 + k * 30, F.y - 4, 26)
+        opts = sorted({n, max(1, n - 1), min(10, n + 1), R.randint(1, 10)})[:3] if n not in (1, 10) else sorted({n, 2 if n == 1 else 9, 3 if n == 1 else 8})
+        if n not in opts:
+            opts[0] = n
+        F.c.setFont('Andika-Bold', 20)
+        F.c.setFillColor(INK)
+        for k, o in enumerate(sorted(opts)):
+            F.c.drawCentredString(W - M - 130 + k * 45, F.y - 26, str(o))
+        F.y -= 46
+    F.y -= 6
+    nums = R.sample(range(2, 10), 4)
+    F.ex('Colorie le bon nombre de ronds.', 4 * 40, 'vérifier : ' + ' · '.join(f'{n} ronds coloriés' for n in nums))
+    for n in nums:
+        F.need(40)
+        F.c.setFont('Andika-Bold', 22)
+        F.c.setFillColor(RED)
+        F.c.drawString(M + 14, F.y - 26, str(n))
+        F.c.setStrokeColor(INK)
+        for k in range(10):
+            F.c.circle(M + 70 + k * 40, F.y - 18, 14, fill=0, stroke=1)
+        F.y -= 40
+    F.y -= 6
+    groups = []
+    for _ in range(3):
+        a = R.randint(1, 7)
+        b = a + R.choice([-3, -2, 2, 3])
+        b = min(9, max(1, b if b != a else a + 2))
+        groups.append((R.choice(things)[0], a, b))
+    F.ex("Entoure le groupe où il y a le plus d'images.", 3 * 70, ' · '.join('à gauche' if a > b else 'à droite' for _, a, b in groups))
+    for e, a, b in groups:
+        F.need(70)
+        for side, n in ((0, a), (1, b)):
+            x0 = M + 10 + side * (W - 2 * M) / 2
+            F.box(x0, F.y - 62, (W - 2 * M) / 2 - 24, 58)
+            for k in range(n):
+                pic(F, e, x0 + 8 + (k % 5) * 34, F.y - 8 - (k // 5) * 26, 24)
+        F.y -= 70
+    F.new_page()  # même partie, numérotation continue
+    sets = [['🔴', '🔵'], ['🍎', '🍌', '🍌'], ['⭐', '🌙', '☀️'], ['🐱', '🐶']]
+    pats = R.sample(sets, 3)
+    NOMS = {'🔴': 'rond rouge', '🔵': 'rond bleu', '🍎': 'pomme', '🍌': 'banane', '⭐': 'étoile', '🌙': 'lune', '☀️': 'soleil', '🐱': 'chat', '🐶': 'chien'}
+    F.ex('Continue la suite : dessine ce qui vient après.', 3 * 50, ' · '.join(', '.join(NOMS[e] for e in (u * 4)[6:8]) for u in pats))
+    for u in pats:
+        F.need(50)
+        seq = (u * 4)[:6]
+        for k, e in enumerate(seq):
+            pic(F, e, M + 10 + k * 52, F.y - 4, 38)
+        for k in range(2):
+            F.box(M + 10 + (6 + k) * 52, F.y - 44, 42, 40)
+        F.y -= 52
+    F.y -= 6
+    names = ['rond', 'carré', 'triangle', 'rectangle']
+    grid = [R.choice(names) for _ in range(12)]
+    F.ex('Colorie les ronds en bleu et les triangles en rouge.', 2 * 66, f"{grid.count('rond')} ronds bleus et {grid.count('triangle')} triangles rouges")
+    for k, nm in enumerate(grid):
+        if k % 6 == 0:
+            F.need(64)
+        shape(F, nm, M + 20 + (k % 6) * 82, F.y - 6, 44)
+        if k % 6 == 5:
+            F.y -= 62
+    F.y -= 10
+    tr = []
+    for _ in range(3):
+        st = R.randint(1, 5)
+        seq = list(range(st, st + 6))
+        holes = sorted(R.sample(range(1, 6), 2))
+        tr.append((seq, holes))
+    F.ex('Écris le nombre qui manque dans le train.', 3 * 40, ' · '.join(' et '.join(str(s[h]) for h in hs) for s, hs in tr))
+    for seq, holes in tr:
+        F.need(40)
+        for i, v in enumerate(seq):
+            F.box(M + 6 + i * 78, F.y - 30, 66, 26, PENCIL if i == 0 else None)
+            if i not in holes:
+                F.c.setFillColor(INK)
+                F.c.setFont('Andika-Bold', 15)
+                F.c.drawCentredString(M + 39 + i * 78, F.y - 22, str(v))
+        F.y -= 40
+    F.section('Petits problèmes')
+    F.text("Un adulte lit l'histoire à voix haute. L'enfant dessine pour chercher, puis entoure ou dit la réponse.", size=11, color=SOFT)
+    F.y -= 6
+    kids = D['kids']
+    for _ in range(4):
+        N, p = R.choice(kids)
+        e, name = R.choice(things)
+        kind = R.choice(['plus', 'moins'])
+        a = R.randint(2, 5)
+        b = R.randint(1, 3) if kind == 'plus' else R.randint(1, a - 1)
+        txt = f'{N} a {a} {name}. ' + (f'On lui en donne encore {b}. Combien en a-t-{p} maintenant ?' if kind == 'plus' else f'{p.capitalize()} en donne {b} à un copain. Combien lui en reste-t-il ?')
+        ans = a + b if kind == 'plus' else a - b
+        F.need(150)
+        F.num += 1
+        F.c.setFillColor(PENCIL)
+        F.c.circle(M + 9, F.y - 9, 10, fill=1, stroke=0)
+        F.c.setFillColor(INK)
+        F.c.setFont('Andika-Bold', 12)
+        F.c.drawCentredString(M + 9, F.y - 13, str(F.num))
+        F.text(txt, x=M + 28, size=13, lead=18)
+        for k in range(a):
+            pic(F, e, M + 30 + k * 34, F.y - 2, 30)
+        F.y -= 40
+        F.box(M + 28, F.y - 54, W - 2 * M - 28, 54)
+        F.c.setFont('Andika', 9.5)
+        F.c.setFillColor(SOFT)
+        F.c.drawString(M + 36, F.y - 13, 'Je dessine :')
+        F.y -= 66
+        F.c.setFont('Andika-Bold', 14)
+        F.c.setFillColor(INK)
+        F.c.drawString(M + 28, F.y, 'Entoure :   ' + '    '.join(str(k) for k in range(0, 10)))
+        F.y -= 26
+        F.key.append((F.tag(), f'{a} {"+" if kind == "plus" else "−"} {b} = {ans}'))
+
+
+def gs_lecture(F, R, D):
+    lex = {x['w']: x for x in D['lex']}
+    CAPS = 'ABCDEFGHIJKLMNOPRSTUV'
+    CONF = ['EFLT', 'MNWV', 'OQCG', 'PRBD', 'IJLT']
+    rows = []
+    for _ in range(4):
+        t = R.choice(CAPS)
+        grp = next((g for g in CONF if t in g), 'AEIOU')
+        line = [t, t] + [R.choice(grp + CAPS) for _ in range(5)]
+        line = [x if x != t else t for x in line]
+        R.shuffle(line)
+        rows.append((t, line))
+    F.ex('Entoure toutes les lettres pareilles au modèle.', 4 * 40, ' · '.join(f"{t} : {line.count(t)} fois" for t, line in rows))
+    for t, line in rows:
+        F.need(40)
+        F.box(M + 6, F.y - 34, 40, 32, PALE)
+        F.c.setFont('Andika-Bold', 22)
+        F.c.setFillColor(RED)
+        F.c.drawCentredString(M + 26, F.y - 26, t)
+        F.c.setFillColor(INK)
+        for k, l in enumerate(line):
+            F.c.drawCentredString(M + 90 + k * 58, F.y - 26, l)
+        F.y -= 40
+    F.y -= 6
+    words = R.sample([x for x in D['lex'] if 4 <= len(x['w']) <= 7 and len(x['fautes']) >= 3], 3)
+    F.ex('Entoure le mot pareil au modèle.', 3 * 44, ' · '.join(x['w'].upper() for x in words))
+    for x in words:
+        F.need(44)
+        pic(F, x['e'], M + 6, F.y - 2, 34)
+        F.c.setFont('Andika-Bold', 15)
+        F.c.setFillColor(RED)
+        F.c.drawString(M + 48, F.y - 24, x['w'].upper())
+        ch = [x['w'].upper()] + [f.upper() for f in x['fautes'][:3]]
+        R.shuffle(ch)
+        F.c.setFillColor(INK)
+        for k, w in enumerate(ch):
+            F.c.drawString(M + 170 + k * 88, F.y - 24, w)
+        F.y -= 44
+    F.y -= 6
+    cnt = R.sample([x for x in D['lex'] if x['w'] not in D['noCount'] and not x['syl'][-1].endswith('e') and len(x['syl']) <= 4], 4)
+    F.ex('Dis le mot en tapant dans tes mains. Colorie une case par syllabe.', 4 * 46, ' · '.join(f"{x['w']} : {len(x['syl'])}" for x in cnt))
+    for x in cnt:
+        F.need(46)
+        pic(F, x['e'], M + 10, F.y - 2, 38)
+        F.c.setFont('Andika-Bold', 13)
+        F.c.setFillColor(INK)
+        F.c.drawString(M + 60, F.y - 24, x['w'].upper())
+        for k in range(4):
+            F.box(M + 220 + k * 50, F.y - 38, 40, 34)
+        F.y -= 46
+    F.new_page()  # même partie, numérotation continue
+    groups = [g for g in D['rimes'] if len(g) >= 2]
+    pairs = [R.sample(g, 2) for g in R.sample(groups, 4)]
+    right = [b for _, b in pairs]
+    R.shuffle(right)
+    F.ex('Relie les images qui riment (qui finissent pareil).', 4 * 58, ' · '.join(f'{a} – {b}' for a, b in pairs))
+    for (a, _), b in zip(pairs, right):
+        F.need(58)
+        pic(F, lex[a]['e'], M + 60, F.y - 2, 44)
+        F.c.setFont('Andika', 10)
+        F.c.setFillColor(SOFT)
+        F.c.drawCentredString(M + 82, F.y - 54, a.upper())
+        F.c.setFillColor(INK)
+        F.c.circle(M + 130, F.y - 24, 3, fill=1, stroke=0)
+        F.c.circle(M + 330, F.y - 24, 3, fill=1, stroke=0)
+        pic(F, lex[b]['e'], M + 360, F.y - 2, 44)
+        F.c.setFillColor(SOFT)
+        F.c.drawCentredString(M + 382, F.y - 54, b.upper())
+        F.y -= 62
+    F.y -= 6
+    keys = R.sample(list(D['onsets']), 3)
+    rows = []
+    for k in keys:
+        model, good = R.sample(D['onsets'][k], 2)
+        bad = [R.choice(D['onsets'][o]) for o in R.sample([o for o in D['onsets'] if o != k], 2)]
+        ch = [good] + bad
+        R.shuffle(ch)
+        rows.append((model, ch, good))
+    F.ex("Entoure l'image qui commence comme le modèle.", 3 * 60, ' · '.join(f'{m} → {g}' for m, _, g in rows))
+    for model, ch, _ in rows:
+        F.need(60)
+        F.box(M + 6, F.y - 56, 62, 54, PALE)
+        pic(F, lex[model]['e'], M + 14, F.y - 6, 46)
+        for k, w in enumerate(ch):
+            pic(F, lex[w]['e'], M + 140 + k * 110, F.y - 6, 46)
+        F.y -= 62
+    F.y -= 6
+    F.ex('Écris ton prénom en lettres capitales, en suivant le modèle donné par un adulte.', 3 * 34, 'Écriture du prénom : vérifier le sens et l\'ordre des lettres.')
+    for _ in range(3):
+        F.need(34)
+        F.dots(M + 10, F.y - 24, W - 2 * M - 20)
+        F.y -= 34
+    F.section("J'écoute et je comprends")
+    F.text("Un adulte lit chaque petite histoire à voix haute. L'enfant entoure la bonne image ou dessine.", size=11, color=SOFT)
+    F.y -= 6
+    pets, foods = D['pets'], D['foods']
+    for _ in range(3):
+        a, b = R.sample(range(len(pets)), 2)
+        f = R.randrange(len(foods))
+        story = f'Le {pets[a][0]} mange {foods[f][0]}. Le {pets[b][0]} dort.'
+        q = R.choice(['Qui mange ?', 'Qui dort ?'])
+        good = a if q == 'Qui mange ?' else b
+        ch = [a, b] + R.sample([i for i in range(len(pets)) if i not in (a, b)], 1)
+        R.shuffle(ch)
+        F.need(110)
+        F.num += 1
+        y0 = F.y
+        F.c.setFillColor(PALE)
+        F.c.rect(M, y0 - 30, W - 2 * M, 30, fill=1, stroke=0)
+        F.c.setFillColor(RED)
+        F.c.rect(M, y0 - 30, 4, 30, fill=1, stroke=0)
+        F.c.setFont('Andika', 13)
+        F.c.setFillColor(INK)
+        F.c.drawString(M + 16, y0 - 20, story)
+        F.y -= 40
+        F.text(f'{F.num}. {q}', size=12.5, font='Andika-Bold')
+        for k, i in enumerate(ch):
+            pic(F, pets[i][1], M + 40 + k * 120, F.y - 2, 46)
+        F.y -= 60
+        F.key.append((F.tag(), f"{q} → le {pets[good][0]}"))
+    phrases = R.sample(['un chat sous une table', 'trois ballons', 'un soleil et deux nuages', 'une maison avec une porte'], 2)
+    F.need(150)
+    F.num += 1
+    F.text(f'{F.num}. Écoute et dessine.', size=12.5, font='Andika-Bold')
+    for k, ph in enumerate(phrases):
+        x = M + k * (W - 2 * M) / 2
+        F.c.setFont('Andika', 11.5)
+        F.c.setFillColor(INK)
+        F.c.drawString(x + 6, F.y - 12, 'Dessine ' + ph + '.')
+        F.box(x + 6, F.y - 124, (W - 2 * M) / 2 - 16, 104)
+    F.y -= 134
+    F.key.append((F.tag(), 'Dessins : vérifier que chaque élément de la phrase est présent.'))
+
+
+# =====================================================================
 # MATHS
 # =====================================================================
 def pieces(R, allowed, total_max):
@@ -475,7 +778,11 @@ def compare(F, R, pairs, consigne='Écris <, > ou =.'):
     F.grid([(a, b, sa, sb) for (a, b), (sa, sb) in zip(pairs, [(fmt(a) if isinstance(a, int) else dec(a), fmt(b) if isinstance(b, int) else dec(b)) for a, b in pairs])], 2, 32, draw)
 
 
-def maths(F, R, niv, kids):
+def maths(F, R, niv, D):
+    if niv == 'gs':
+        return gs_maths(F, R, D)
+    kids = D['kids']
+
     def kid():
         return R.choice(kids)
 
@@ -685,6 +992,8 @@ def maths(F, R, niv, kids):
 # LECTURE
 # =====================================================================
 def lecture(F, R, niv, D):
+    if niv == 'gs':
+        return gs_lecture(F, R, D)
     lex = D['lex']
 
     def story_qs(st, n=3):
@@ -915,7 +1224,7 @@ def main():
         for j, (volet, fn) in enumerate((('Maths', maths), ('Lecture', lecture))):
             R = random.Random(args.serie * 1000 + i * 10 + j)
             F = Fiche(out / f'{niv}-{volet.lower()}.pdf', niv, volet)
-            fn(F, R, niv, D['kids'] if volet == 'Maths' else D)
+            fn(F, R, niv, D)
             F.save()
             print(f'{niv}-{volet.lower()}.pdf : {F.page} pages')
 

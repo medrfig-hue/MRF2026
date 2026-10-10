@@ -186,6 +186,11 @@ a.btn { text-decoration: none; display: inline-block; }
 .wcard span { font-family: var(--body); font-weight: 700; font-size: 1.1rem; }
 .choices.read .choice { font-family: var(--body); font-weight: 700; font-size: 1.6rem; overflow-wrap: anywhere; }
 .choices.emo .choice { font-size: 2.6rem; }
+.choices.grp { grid-template-columns: 1fr 1fr; }
+.cluster { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; font-size: 1.5rem; line-height: 1.1; min-height: 3.4rem; align-content: center; }
+.pips { display: block; font-size: .7rem; letter-spacing: 1px; color: var(--margin-red); overflow-wrap: anywhere; }
+.choice svg { display: block; margin: 0 auto; }
+.motif { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; font-size: 2.4rem; align-items: center; }
 .choices.long { grid-template-columns: 1fr; }
 .choices.long .choice { font-size: 1.2rem; text-align: left; padding-inline: 16px; }
 .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
@@ -271,7 +276,7 @@ td.num { text-align: right; }
     <div class="top">
       <div class="brand">
         <h1>Le Cahier des <span id="brandWord">Nombres</span></h1>
-        <span class="tag">Maths et lecture · CP · CE1 · CE2 · CM1</span>
+        <span class="tag">Maths et lecture · GS · CP · CE1 · CE2 · CM1</span>
       </div>
       <button class="star-pill" id="homeStars" type="button" title="Voir mon album">
         <span class="s">★</span><span id="starTotal">0</span>
@@ -289,6 +294,7 @@ td.num { text-align: right; }
       <div class="avatars" id="avatars" role="group" aria-label="Choisis ton compagnon"></div>
       <div class="hello-row">
         <div class="seg" role="group" aria-label="Ma classe">
+          <button type="button" data-level="gs" id="lvlGs">GS</button>
           <button type="button" data-level="cp" id="lvlCp">CP</button>
           <button type="button" data-level="ce1" id="lvlCe1">CE1</button>
           <button type="button" data-level="ce2" id="lvlCe2">CE2</button>
@@ -409,6 +415,7 @@ const $ = s => document.querySelector(s);
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const deN = w => (/^[aeéèêiouh]/.test(w) ? "d'" : 'de ') + w; // « d'étoiles », « de pommes »
 const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
 const BLANK = '<span class="blank">?</span>';
 const ROUND = 10;
@@ -512,7 +519,7 @@ GEN.compter = (L, d) => {
   const R = L === 'cp' ? [[2, 6], [5, 12], [10, 20]][d] : [[10, 30], [20, 50], [30, 60]][d];
   const n = rand(R[0], R[1]);
   return {
-    label: 'Compter', prompt: `Combien de ${name} ?`, speak: `Combien de ${name} ?`,
+    label: 'Compter', prompt: `Combien ${deN(name)} ?`, speak: `Combien ${deN(name)} ?`,
     visual: n <= 6 && d === 0 ? objs(n, e) : tenFrames(n, e),
     answer: n, input: 'choices',
     choices: L === 'cp' ? choicesAround(n, 2, 1) : choicesAround(n, 2, 1, [n + 10, n - 10]),
@@ -678,7 +685,7 @@ GEN.multiplier = (L, d) => {
   if (L === 'cp') {
     const g = rand(2, d === 0 ? 3 : 4), n = rand(2, d === 2 ? 5 : 3);
     return {
-      label: 'Les groupes', prompt: `${g} groupes de ${n} ${name}. Combien en tout ?`, speak: `Il y a ${g} groupes de ${n} ${name}. Combien de ${name} en tout ?`,
+      label: 'Les groupes', prompt: `${g} groupes de ${n} ${name}. Combien en tout ?`, speak: `Il y a ${g} groupes de ${n} ${name}. Combien ${deN(name)} en tout ?`,
       visual: groups(g, n, e), answer: g * n, input: 'choices', choices: choicesAround(g * n, 3, 1, [g + n]),
       hint: `Compte ${n} par ${n} : ${Array.from({ length: g }, (_, i) => n * (i + 1)).join(', ')}…`, explain: `${Array(g).fill(n).join(' + ')} = ${g * n}`
     };
@@ -757,7 +764,7 @@ GEN2.compter = (L, d) => {
   const [e, name] = pick(THINGS);
   const r = rand(3, [5, 8, 10][d]), c = rand(4, [5, 8, 10][d]), n = r * c;
   return {
-    label: 'Compter en rangées', prompt: `Combien de ${name} ?`, speak: `Combien de ${name} ? Compte vite avec les rangées.`,
+    label: 'Compter en rangées', prompt: `Combien ${deN(name)} ?`, speak: `Combien ${deN(name)} ? Compte vite avec les rangées.`,
     visual: grid(r, c, e), answer: n, input: 'choices', choices: choicesAround(n, 3, 1, [n + c, n - c, r + c]),
     hint: `Compte les ${name} d'une rangée, puis compte les rangées : c'est une multiplication.`,
     explain: `${r} rangées de ${c} : ${r} × ${c} = ${n}.`
@@ -1802,21 +1809,198 @@ GEN['l-mots'] = (L, d) => {
   };
 };
 
+/* ================= Grande Section (GS) =================
+   L'enfant ne lit pas encore : chaque consigne est lue à voix haute (voir nextQuestion),
+   les réponses sont des images, des points ou des chiffres jusqu'à 10. */
+const GEN0 = {};
+const dotsNum = n => `${n}<small class="pips">${'●'.repeat(n)}</small>`;
+const showGroup = v => { const [n, e] = String(v).split('|'); return `<span class="cluster">${e.repeat(Number(n))}</span>`; };
+const SHAPES = {
+  rond: c => `<circle cx="30" cy="30" r="22" fill="${c}"/>`,
+  carré: c => `<rect x="10" y="10" width="40" height="40" fill="${c}"/>`,
+  rectangle: c => `<rect x="4" y="17" width="52" height="26" fill="${c}"/>`,
+  triangle: c => `<polygon points="30,7 54,51 6,51" fill="${c}"/>`
+};
+const SHAPE_COLORS = ['#e8737a', '#4fb6ff', '#ffc93c', '#3fbf7f', '#a98bff'];
+const svgShape = (name, color, rot = 0) => `<svg viewBox="0 0 60 60" width="64" height="64" aria-label="${name}"><g stroke="#1d2f6f" stroke-width="2.5" stroke-linejoin="round" transform="rotate(${rot} 30 30)">${SHAPES[name](color)}</g></svg>`;
+
+GEN0.compter = (L, d) => {
+  const [e, name] = pick(THINGS), n = rand(1, [5, 8, 10][d]);
+  return {
+    label: 'Compter', prompt: `Combien ${deN(name)} ?`, speak: `Compte les ${name}. Combien y en a-t-il ?`,
+    visual: objs(n, e), answer: n, input: 'choices', choices: withAnswer(n, shuffle([n - 1, n + 1, n + 2, n - 2].filter(v => v >= 1 && v <= 10))),
+    display: d < 2 ? dotsNum : null, hint: 'Touche chaque objet avec ton doigt en comptant : un, deux, trois…', explain: `Il y a ${n} ${name}.`
+  };
+};
+
+GEN0.comparer = (L, d) => {
+  const [e, name] = pick(THINGS), most = d < 2;
+  let a = rand(1, 8), b = rand(1, 8);
+  while (Math.abs(a - b) < (d === 0 ? 3 : 1)) b = rand(1, 9);
+  const ans = `${most ? Math.max(a, b) : Math.min(a, b)}|${e}`;
+  return {
+    label: most ? 'Le plus' : 'Le moins', prompt: `Où y a-t-il ${most ? 'le plus' : 'le moins'} ${deN(name)} ?`, speak: `Où y a-t-il ${most ? 'le plus' : 'le moins'} ${deN(name)} ? Touche le bon groupe.`,
+    visual: '', answer: ans, input: 'choices', choices: shuffle([`${a}|${e}`, `${b}|${e}`]), display: showGroup, groups: true,
+    hint: 'Compte les objets de chaque groupe, puis compare.', explain: `${Math.max(a, b)}, c'est plus que ${Math.min(a, b)}.`
+  };
+};
+
+GEN0.complement = (L, d) => {
+  const t = [5, 5, 10][d], a = rand(1, t - 1);
+  const frame = `<div class="frame" style="grid-template-columns:repeat(5,38px);grid-template-rows:repeat(${t / 5},38px)">${Array.from({ length: t }, (_, i) => i < a ? '<span class="cell">🟡</span>' : '<span class="cell empty"></span>').join('')}</div>`;
+  return {
+    label: `Faire ${t}`, prompt: `Combien en manque-t-il pour faire ${t} ?`, speak: `Il faut remplir toutes les cases. Combien de jetons manque-t-il pour faire ${t} ?`,
+    visual: frame, answer: t - a, input: 'choices', choices: withAnswer(t - a, shuffle([a, t - a + 1, t - a - 1, t].filter(v => v >= 1 && v <= 10))), display: dotsNum,
+    hint: 'Compte les cases vides.', explain: `${a} et ${t - a}, ça fait ${t}.`
+  };
+};
+
+GEN0.suite = (L, d) => {
+  const back = d === 2, len = 5;
+  const start = back ? rand(5, 10) : rand(1, d === 0 ? 2 : 6);
+  const seq = Array.from({ length: len }, (_, i) => back ? start - i : start + i);
+  const miss = rand(1, len - 1), ans = seq[miss];
+  const wag = seq.map((v, i) => `<span class="wagon${i === 0 ? ' loco' : ''}">${i === miss ? BLANK : v}</span>`).join('');
+  return {
+    label: 'Le train', prompt: `<div class="train">${wag}</div>`, speak: back ? 'On compte à l\'envers. Quel nombre manque dans le train ?' : 'Quel nombre manque dans le train ?',
+    visual: '', answer: ans, input: 'choices', choices: withAnswer(ans, shuffle([ans + 1, ans - 1, ans + 2].filter(v => v >= 0 && v <= 11))),
+    hint: back ? 'Récite les nombres à l\'envers : dix, neuf, huit…' : 'Récite les nombres dans l\'ordre : un, deux, trois…', explain: `Il manquait ${ans}.`
+  };
+};
+
+GEN0.addition = (L, d) => {
+  const [e, name] = pick(THINGS), a = rand(2, [3, 4, 6][d]), b = rand(1, [2, 4, 4][d]), s = a + b;
+  return {
+    label: 'Ajouter', prompt: `${a} ${name} et encore ${b}. Combien en tout ?`, speak: `Il y a ${a} ${name}, et on en ajoute ${b}. Combien y en a-t-il en tout ?`,
+    visual: objs(a, e) + '<span class="op">+</span>' + objs(b, e), answer: s, input: 'choices', choices: withAnswer(s, shuffle([s - 1, s + 1, a, b + 1].filter(v => v >= 1 && v !== s))), display: dotsNum,
+    hint: 'Compte tous les objets ensemble.', explain: `${a} et ${b}, ça fait ${s}.`
+  };
+};
+
+GEN0.formes = (L, d) => {
+  const names = Object.keys(SHAPES);
+  const target = d === 2 ? pick(['rectangle', 'carré']) : pick(names);
+  const others = shuffle(names.filter(n => n !== target));
+  const pickOthers = d === 2 ? [target === 'carré' ? 'rectangle' : 'carré', ...others.filter(n => !['rectangle', 'carré'].includes(n))] : others;
+  const color = pick(SHAPE_COLORS), rot = () => (d === 0 ? 0 : pick([0, 15, 30, 45, -20]));
+  const choices = shuffle([target, ...pickOthers.slice(0, 3)]).map(n => `${n}|${d === 0 ? color : pick(SHAPE_COLORS)}|${n === 'rond' ? 0 : rot()}`);
+  return {
+    label: 'Les formes', prompt: `Trouve ${target === 'rond' ? 'le rond' : 'le ' + target}.`, speak: `Trouve ${target === 'rond' ? 'le rond' : 'le ' + target}.`,
+    visual: '', answer: choices.find(c => c.startsWith(target + '|')), input: 'choices', choices, display: v => { const [n, c, r] = v.split('|'); return svgShape(n, c, Number(r)); },
+    hint: { rond: 'Le rond n\'a pas de coin.', carré: 'Le carré a 4 côtés tous pareils.', rectangle: 'Le rectangle a 4 côtés : 2 longs et 2 courts.', triangle: 'Le triangle a 3 côtés et 3 pointes.' }[target],
+    explain: `Voici ${target === 'rond' ? 'le rond' : 'le ' + target}.`
+  };
+};
+
+const MOTIF_SETS = [['🔴', '🔵', '🟡', '🟢'], ['🍎', '🍌', '🍇', '🍓'], ['⭐', '🌙', '☀️', '☁️'], ['🐱', '🐶', '🐰', '🐸']];
+GEN0.motifs = (L, d) => {
+  const set = shuffle(pick(MOTIF_SETS));
+  const unit = d === 0 ? [set[0], set[1]] : d === 1 ? pick([[set[0], set[1], set[1]], [set[0], set[0], set[1]]]) : [set[0], set[1], set[2]];
+  const show = rand(unit.length + 2, 7), seq = Array.from({ length: show + 1 }, (_, i) => unit[i % unit.length]);
+  const ans = seq[show];
+  return {
+    label: 'Les suites', prompt: `<div class="motif">${seq.slice(0, show).map(x => `<span>${x}</span>`).join('')}<span class="blank">?</span></div>`,
+    speak: 'Regarde bien la suite. Qu\'est-ce qui vient après ?', visual: '', answer: ans, input: 'choices', choices: shuffle(set.slice(0, Math.max(3, unit.length + 1))), emoji: true,
+    hint: 'Dis la suite à voix haute pour trouver ce qui se répète.', explain: `La suite se répète : ${unit.join(' ')}.`
+  };
+};
+
+/* ---------- GS : lecture et langage oral ---------- */
+const CAPS = 'ABCDEFGHIJKLMNOPRSTUV';
+const CONF_CAPS = ['EFLT', 'MNWV', 'OQCG', 'PRBD', 'IJLT', 'UV'];
+GEN['l-lettres-gs'] = (L, d) => {
+  if (d === 2) {
+    const w = pick(LEX.filter(x => /^[a-z]/.test(x.w) && x.w[0] !== 'h')), ans = w.w[0].toUpperCase();
+    return {
+      label: 'La première lettre', prompt: `Par quelle lettre commence <b>${w.w.toUpperCase()}</b> ?`, speak: `Par quelle lettre commence le mot ${w.w} ?`, read: true,
+      visual: bigEmo(w.e), answer: ans, input: 'choices', choices: withAnswer(ans, shuffle([...((CONF_CAPS.find(g => g.includes(ans)) || '') + CAPS)])),
+      hint: 'Regarde la première lettre du mot, tout à gauche.', explain: `${w.w.toUpperCase()} commence par ${ans}.`
+    };
+  }
+  const t = pick([...CAPS]), grp = CONF_CAPS.find(g => g.includes(t)) || '';
+  return {
+    label: 'Les lettres', prompt: d === 0 ? `Trouve la même lettre : <b class="letter">${t}</b>` : (canSpeak ? 'Écoute et trouve la lettre.' : `Trouve la lettre <b class="letter">${t}</b>`),
+    speak: d === 0 ? 'Trouve la même lettre.' : `Trouve la lettre ${t}.`, read: true, visual: '',
+    answer: t, input: 'choices', choices: withAnswer(t, shuffle([...grp, ...shuffle([...CAPS])])),
+    hint: d === 0 ? 'Compare bien les traits de chaque lettre.' : `Écoute encore : ${t}.`, explain: `C'était la lettre ${t}.`
+  };
+};
+GEN['l-syllabes-gs'] = (L, d) => {
+  const pool = LEX.filter(x => !NO_COUNT.includes(x.w) && !/e$/.test(x.syl[x.syl.length - 1]) && x.syl.length <= [2, 3, 4][d]);
+  const w = pick(pool), n = w.syl.length;
+  return {
+    label: 'Taper les syllabes', prompt: 'Tape dans tes mains. Combien de syllabes ?', speak: `Tape dans tes mains en disant le mot ${w.w}. Combien de fois as-tu tapé ?`,
+    visual: bigEmo(w.e), answer: n, input: 'choices', choices: [1, 2, 3, 4], display: k => `${k}<small class="pips">${'👏'.repeat(k)}</small>`,
+    hint: `Dis le mot lentement : ${w.syl.join(' - ')}.`, explain: `${w.syl.join(' - ')} : ${plural(n, 'syllabe')}.`
+  };
+};
+const RIMES = [['ballon', 'mouton', 'camion', 'avion', 'cochon', 'dragon', 'citron', 'poisson', 'maison'], ['bateau', 'gâteau', 'cadeau', 'chapeau', 'château', 'vélo', 'moto', 'oiseau'],
+  ['lapin', 'sapin', 'requin', 'pain', 'main', 'train', 'chien'], ['loup', 'hibou', 'kangourou'], ['lunettes', 'fourchette']];
+GEN['l-rimes'] = (L, d) => {
+  const g = pick(RIMES.filter(r => r.length >= 3)), [w, ans] = shuffle(g);
+  const others = shuffle(RIMES.filter(r => r !== g).flat()).slice(0, d === 0 ? 1 : d === 1 ? 2 : 3);
+  return {
+    emoji: true, label: 'Les rimes', prompt: `Quel mot rime avec <b>${w.toUpperCase()}</b> ?`, speak: `Quel mot rime avec ${w} ? Écoute la fin des mots.`, read: true,
+    visual: bigEmo(byWord[w].e), answer: ans, input: 'choices', choices: shuffle([ans, ...others]), display: x => `${byWord[x].e}<small>${x.toUpperCase()}</small>`,
+    hint: `Dis les mots et écoute la fin : ${w}…`, explain: `${w} et ${ans} finissent pareil.`
+  };
+};
+const ONSETS = { p: ['pomme', 'poule', 'poisson', 'papillon', 'pain'], b: ['bateau', 'banane', 'ballon', 'baleine', 'bouche'], l: ['lapin', 'lion', 'lune', 'loup', 'lunettes'],
+  m: ['mouton', 'maison', 'main', 'moto'], s: ['sapin', 'souris', 'serpent'], k: ['canard', 'cadeau', 'camion', 'carotte', 'cochon', 'couronne', 'crocodile'],
+  ch: ['chat', 'chapeau', 'château', 'cheval', 'chien'], t: ['tomate', 'tortue', 'tigre', 'tambour', 'train', 'télévision'], r: ['robot', 'roi', 'requin'], v: ['vélo', 'voiture', 'vache'] };
+GEN['l-attaque'] = (L, d) => {
+  const keys = Object.keys(ONSETS), k = pick(keys), [w, ans] = shuffle(ONSETS[k]);
+  const others = shuffle(keys.filter(x => x !== k)).slice(0, d === 0 ? 1 : 3).map(x => pick(ONSETS[x]));
+  return {
+    emoji: true, label: 'Le premier son', prompt: `Quel mot commence comme <b>${w.toUpperCase()}</b> ?`, speak: `Quel mot commence comme ${w} ? Écoute le début des mots.`, read: true,
+    visual: bigEmo(byWord[w].e), answer: ans, input: 'choices', choices: shuffle([ans, ...others]), display: x => `${byWord[x].e}<small>${x.toUpperCase()}</small>`,
+    hint: `Dis le début du mot : ${w.slice(0, k.length)}…`, explain: `${w} et ${ans} commencent par le même son.`
+  };
+};
+GEN['l-memes'] = (L, d) => {
+  const w = pick(LEX.filter(x => x.w.length >= [3, 4, 5][d] && x.w.length <= [5, 7, 10][d])), W_ = w.w.toUpperCase();
+  const fakes = misspell(w.w, 3).map(s => s.toUpperCase()).filter(s => s !== W_);
+  return {
+    label: 'Le même mot', prompt: `Trouve le même mot : <b>${W_}</b>`, speak: 'Trouve exactement le même mot. Regarde chaque lettre.', read: true,
+    visual: '', answer: W_, input: 'choices', choices: withAnswer(W_, fakes),
+    hint: 'Compare les lettres une par une, de gauche à droite.', explain: `Le même mot : ${W_}.`
+  };
+};
+GEN['l-ecoute'] = (L, d) => {
+  if (d === 0) {
+    const f = rand(0, FOODS.length - 1), others = shuffle(FOODS.map((_, i) => i).filter(i => i !== f)).map(String);
+    return { label: 'Écoute et montre', prompt: canSpeak ? 'Écoute et touche la bonne image.' : `Montre ${FOODS[f][0]}.`, speak: `Montre-moi ${FOODS[f][0]}.`, visual: '',
+      answer: String(f), input: 'choices', choices: withAnswer(String(f), others), display: i => FOODS[i][1], emoji: true, hint: `Écoute encore : ${FOODS[f][0]}.`, explain: `C'était ${FOODS[f][0]} ${FOODS[f][1]}.` };
+  }
+  const p = GEN['l-phrases']('cp', d);
+  return Object.assign(p, { label: 'Écoute l\'histoire', speak: p.prompt.replace(/<br>/g, ' '), prompt: canSpeak ? `<span class="muted">${p.prompt}</span>` : p.prompt, hint: 'Écoute encore la phrase en touchant le haut-parleur.' });
+};
+
 /* ================= Jeux disponibles ================= */
 const ACTS = [
-  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées', cm1: 'Fractions' }, ds: { cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets', cm1: 'Bandes coloriées, fraction d\'une quantité' } },
-  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { cp: 'Additions', ce1: 'Additions', ce2: 'Additions', cm1: 'Additions' }, ds: { cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue', ce2: 'Jusqu\'à 1000, opérations posées', cm1: 'Grands nombres et décimaux' } },
+  { id: 'compter', ico: '🐞', c: '#ff9f6b', nm: { gs: 'Compter', cp: 'Compter', ce1: 'Compter vite', ce2: 'Les rangées', cm1: 'Fractions' }, ds: { gs: 'Jusqu\'à 10', cp: 'Combien y en a-t-il ?', ce1: 'Compte avec les boîtes de 10', ce2: 'Les rangées d\'objets', cm1: 'Bandes coloriées, fraction d\'une quantité' } },
+  { id: 'addition', ico: '➕', c: '#4fb6ff', nm: { gs: 'Ajouter', cp: 'Additions', ce1: 'Additions', ce2: 'Additions', cm1: 'Additions' }, ds: { gs: 'Encore un, encore deux…', cp: 'Jusqu\'à 20, puis les dizaines', ce1: 'Jusqu\'à 100, avec retenue', ce2: 'Jusqu\'à 1000, opérations posées', cm1: 'Grands nombres et décimaux' } },
   { id: 'soustraction', ico: '➖', c: '#a98bff', nm: { cp: 'Soustractions', ce1: 'Soustractions', ce2: 'Soustractions', cm1: 'Soustractions' }, ds: { cp: 'On enlève, il en reste…', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000, avec retenues', cm1: 'Grands nombres et décimaux' } },
-  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { cp: 'Aller à 10', ce1: 'Aller à 100', ce2: 'Aller à 1000', cm1: 'Compléments' }, ds: { cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100', ce2: 'Compléter à 100 et à 1000', cm1: 'À 10 000, au millier, à 1' } },
-  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { cp: 'Le crocodile', ce1: 'Le crocodile', ce2: 'Le crocodile', cm1: 'Le crocodile' }, ds: { cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000', ce2: 'Comparer jusqu\'à 10 000', cm1: 'Grands nombres, décimaux, fractions' } },
+  { id: 'complement', ico: '🔟', c: '#ffc93c', nm: { gs: 'Faire 5, faire 10', cp: 'Aller à 10', ce1: 'Aller à 100', ce2: 'Aller à 1000', cm1: 'Compléments' }, ds: { gs: 'Combien en manque-t-il ?', cp: 'Les compléments à 10 et à 20', ce1: 'Compléter à la dizaine et à 100', ce2: 'Compléter à 100 et à 1000', cm1: 'À 10 000, au millier, à 1' } },
+  { id: 'comparer', ico: '🐊', c: '#3fbf7f', nm: { gs: 'Le plus, le moins', cp: 'Le crocodile', ce1: 'Le crocodile', ce2: 'Le crocodile', cm1: 'Le crocodile' }, ds: { gs: 'Comparer des groupes', cp: 'Plus petit, plus grand, égal', ce1: 'Comparer jusqu\'à 1000', ce2: 'Comparer jusqu\'à 10 000', cm1: 'Grands nombres, décimaux, fractions' } },
   { id: 'dizaines', ico: '🧱', c: '#ff7a8a', nm: { cp: 'Dizaines', ce1: 'Centaines', ce2: 'Milliers', cm1: 'Grands nombres' }, ds: { cp: 'Barres de 10 et petits cubes', ce1: 'Plaques, barres et cubes', ce2: 'Milliers, centaines, dizaines', cm1: 'Lire, écrire, chiffres des décimaux' } },
-  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { cp: 'Le train', ce1: 'Le train', ce2: 'Le train', cm1: 'Le train' }, ds: { cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…', ce2: 'De 25, 50, 100, 1000…', cm1: 'De 1 000 en 1 000, de 0,1 en 0,1' } },
+  { id: 'suite', ico: '🚂', c: '#5ccfc0', nm: { gs: 'Le train', cp: 'Le train', ce1: 'Le train', ce2: 'Le train', cm1: 'Le train' }, ds: { gs: 'Les nombres dans l\'ordre', cp: 'Le nombre qui manque', ce1: 'Compter de 2, 5, 10, 100…', ce2: 'De 25, 50, 100, 1000…', cm1: 'De 1 000 en 1 000, de 0,1 en 0,1' } },
   { id: 'doubles', ico: '🪞', c: '#f78fd0', nm: { cp: 'Doubles', ce1: 'Doubles et moitiés', ce2: 'Doubles et moitiés', cm1: 'Moitiés, tiers, quarts' }, ds: { cp: 'Doubles et moitiés', ce1: 'Jusqu\'à 100', ce2: 'Jusqu\'à 1000', cm1: 'Moitiés décimales, fractions' } },
   { id: 'multiplier', ico: '✖️', c: '#ff6b5c', nm: { cp: 'Les groupes', ce1: 'Tables', ce2: 'Multiplier, diviser', cm1: 'Multiplier, diviser' }, ds: { cp: 'Compter des paquets', ce1: 'Tables de 2, 3, 4, 5 et 10', ce2: 'Tables de 2 à 9, division', cm1: 'Multiplication, division avec reste' } },
   { id: 'monnaie', ico: '💶', c: '#8fc75b', nm: { cp: 'La monnaie', ce1: 'La marchande', ce2: 'La marchande', cm1: 'Les mesures' }, ds: { cp: 'Pièces et billets en euros', ce1: 'Compter et rendre la monnaie', ce2: 'Euros et centimes', cm1: 'Longueurs, masses, contenances, durées' } },
   { id: 'problemes', ico: '🧩', c: '#7e9cff', nm: { cp: 'Petits problèmes', ce1: 'Problèmes', ce2: 'Problèmes', cm1: 'Problèmes' }, ds: { cp: 'Des histoires à calculer', ce1: 'Ajouter, enlever, partager', ce2: 'Problèmes en deux étapes', cm1: 'Plusieurs étapes, fractions, périmètre' } }
 ];
+ACTS.push(
+  { id: 'formes', ico: '🔺', c: '#3fbf7f', nm: { gs: 'Les formes' }, ds: { gs: 'Rond, carré, triangle, rectangle' } },
+  { id: 'motifs', ico: '🔁', c: '#a98bff', nm: { gs: 'Les suites' }, ds: { gs: 'Qu\'est-ce qui vient après ?' } }
+);
 const ACTS_LECT = [
+  { id: 'l-lettres-gs', ico: '🔤', c: '#ff9f6b', nm: { gs: 'Les lettres' }, ds: { gs: 'Lettres capitales' } },
+  { id: 'l-syllabes-gs', ico: '👏', c: '#4fb6ff', nm: { gs: 'Taper les syllabes' }, ds: { gs: 'Tape dans tes mains' } },
+  { id: 'l-rimes', ico: '🎵', c: '#a98bff', nm: { gs: 'Les rimes' }, ds: { gs: 'Les mots qui finissent pareil' } },
+  { id: 'l-attaque', ico: '👂', c: '#ffc93c', nm: { gs: 'Le premier son' }, ds: { gs: 'Les mots qui commencent pareil' } },
+  { id: 'l-memes', ico: '🔍', c: '#3fbf7f', nm: { gs: 'Le même mot' }, ds: { gs: 'Repérer un mot en capitales' } },
+  { id: 'l-ecoute', ico: '🎧', c: '#5ccfc0', nm: { gs: 'Écoute et montre' }, ds: { gs: 'Écouter, comprendre, montrer' } },
   { id: 'l-lettres', ico: '🔤', c: '#ff9f6b', nm: { cp: 'Les lettres' }, ds: { cp: 'Majuscules, minuscules, alphabet' } },
   { id: 'l-syllabes', ico: '👏', c: '#4fb6ff', nm: { cp: 'Les syllabes' }, ds: { cp: 'Assembler et découper les mots' } },
   { id: 'l-sons', ico: '👂', c: '#a98bff', nm: { cp: 'Les sons', ce1: 'Écrire les sons' }, ds: { cp: 'ou, on, an, in, oi, ch, au', ce1: 'eau, ain, en, oi, m devant b et p' } },
@@ -1857,7 +2041,7 @@ function renderHome() {
   document.querySelectorAll('[data-subject]').forEach(b => b.setAttribute('aria-pressed', b.dataset.subject === save.subject));
   const lv = save.level, LV = lv.toUpperCase();
   $('#printLinks').innerHTML = ['maths', 'lecture'].map(v => `<a class="btn small${v === save.subject ? '' : ' ghost'}" href="${PDF_BASE}${lv}-${v}.pdf" target="_blank" rel="noopener">📄 ${v === 'maths' ? 'Maths' : 'Lecture'} ${LV}</a>`).join('');
-  const list = lect ? ACTS_LECT.filter(a => a.nm[save.level]) : ACTS;
+  const list = (lect ? ACTS_LECT : ACTS).filter(a => a.nm[save.level]);
   $('#tiles').innerHTML = list.map(a => {
     const st = save.stats[save.level + ':' + a.id];
     const best = st && st.played ? `★ ${st.best} / ${ROUND}` : 'Nouveau !';
@@ -1881,7 +2065,7 @@ function nextQuestion() {
   clearTimeout(G.timer);
   if (G.idx >= ROUND) return endGame();
   let q, guard = 0;
-  const gen = (G.level === 'cm1' && GEN3[G.id]) || (G.level === 'ce2' && GEN2[G.id]) || GEN[G.id];
+  const gen = (G.level === 'gs' && GEN0[G.id]) || (G.level === 'cm1' && GEN3[G.id]) || (G.level === 'ce2' && GEN2[G.id]) || GEN[G.id];
   do { q = gen(G.level, G.diff); } while (guard++ < 10 && G.last && q.prompt === G.last);
   G.last = q.prompt;
   G.q = q; G.tries = 0; G.typed = ''; G.locked = false;
@@ -1897,7 +2081,7 @@ function nextQuestion() {
   $('#nextRow').hidden = true;
   $('#speakBtn').hidden = !canSpeak;
   renderAnswer();
-  if (save.voice) say(q.speak);
+  if (voiceOn()) say(q.speak);
 }
 
 function renderAnswer() {
@@ -1905,7 +2089,7 @@ function renderAnswer() {
   if (q.input === 'choices') {
     const list = q.symbols ? q.choices : q.choices.map(v => [v, '']);
     const show = q.display || (v => v);
-    box.innerHTML = `<div class="choices${q.read ? ' read' : ''}${q.long ? ' long' : ''}${q.emoji ? ' emo' : ''}">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : show(v)}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
+    box.innerHTML = `<div class="choices${q.read ? ' read' : ''}${q.long ? ' long' : ''}${q.emoji ? ' emo' : ''}${q.groups ? ' grp' : ''}">${list.map(([v, sub]) => `<button type="button" class="choice" data-v="${v}">${v === '<' ? '&lt;' : v === '>' ? '&gt;' : show(v)}${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`;
   } else {
     const hasBlank = !!$('#prompt .blank');
     box.innerHTML = (hasBlank ? '' : `<div class="answerbox">${BLANK}</div>`) +
@@ -1920,6 +2104,8 @@ function blanks() { return document.querySelectorAll('#game .blank'); }
 function setBlank(txt, cls) {
   blanks().forEach(b => { b.textContent = txt === '' ? '?' : txt; b.className = 'blank' + (txt !== '' ? ' filled' : '') + (cls ? ' ' + cls : ''); });
 }
+// En Grande Section, l'enfant ne lit pas encore : les consignes sont toujours lues.
+const voiceOn = () => save.voice || (G && G.level === 'gs');
 function setBubble(kind, html) {
   $('#bubble').className = 'bubble' + (kind ? ' ' + kind : '');
   $('#say').innerHTML = html;
@@ -1959,7 +2145,7 @@ function check(value, btn) {
     setBubble('good', firstTry ? `${cheer} +1 ★` : `Oui ! ${q.explain}`);
     sfx.good();
     if (firstTry) confetti(24);
-    if (save.voice) say(firstTry ? cheer : 'Oui !');
+    if (voiceOn()) say(firstTry ? cheer : 'Oui !');
     adapt();
     $('#roundStars').textContent = G.stars;
     renderDots();
@@ -1973,7 +2159,7 @@ function check(value, btn) {
     setBlank(String(value), 'wrong');
     setBubble('bad', `Presque ! Essaie encore. <br>💡 ${q.hint}`);
     if (q.hintVisual) $('#visual').innerHTML = q.hintVisual;
-    if (save.voice) say('Presque ! Essaie encore. ' + q.hint.replace(/🐊/g, ''));
+    if (voiceOn()) say('Presque ! Essaie encore. ' + q.hint.replace(/🐊/g, ''));
     G.typed = '';
     setTimeout(() => { if (G && G.q === q && !G.locked) setBlank(''); }, 900);
     return;
@@ -1985,7 +2171,7 @@ function check(value, btn) {
   setBlank((q.display || String)(q.answer), 'right');
   disableChoices(true);
   setBubble('bad', `La bonne réponse est <b>${escapeSym((q.display || String)(q.answer))}</b>. ${q.explain.replace(/[^.!]$/, '$&.')} <br>Ce n'est pas grave, on apprend en se trompant !`);
-  if (save.voice) say('La bonne réponse est ' + q.explain.replace('×', 'fois').replace('−', 'moins').replace('+', 'plus'));
+  if (voiceOn()) say('La bonne réponse est ' + q.explain.replace('×', 'fois').replace('−', 'moins').replace('+', 'plus'));
   adapt();
   renderDots();
   G.idx++;
@@ -2020,7 +2206,7 @@ function endGame() {
   show('end');
   sfx.win();
   if (s >= 7) confetti(120);
-  if (save.voice) say($('#endTitle').textContent + ' ' + $('#endText').textContent + (fresh ? ' Tu as gagné un nouvel autocollant !' : ''));
+  if (voiceOn()) say($('#endTitle').textContent + ' ' + $('#endText').textContent + (fresh ? ' Tu as gagné un nouvel autocollant !' : ''));
 }
 
 /* ================= Album & parents ================= */
@@ -2033,7 +2219,7 @@ function renderAlbum() {
 }
 function renderParents() {
   const rows = [];
-  ['cp', 'ce1', 'ce2', 'cm1'].forEach(L => ACTS.concat(ACTS_LECT).forEach(a => {
+  ['gs', 'cp', 'ce1', 'ce2', 'cm1'].forEach(L => ACTS.concat(ACTS_LECT).forEach(a => {
     const st = save.stats[L + ':' + a.id];
     if (!st || !st.played || !a.nm[L]) return;
     const pct = st.asked ? Math.round(st.first / st.asked * 100) : 0;

@@ -1,6 +1,13 @@
 # Le Cahier des Nombres
 
-Jeu de maths et de lecture pour enfants de 6 à 10 ans (programme **CP**, **CE1**, **CE2** et **CM1**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
+Jeu de maths et de lecture pour enfants de 5 à 10 ans (**Grande Section**, **CP**, **CE1**, **CE2** et **CM1**), dans une seule page web : ouvrez `index.html` dans un navigateur, sur ordinateur, tablette ou téléphone. Aucune installation.
+
+## Grande Section
+
+En GS, l'enfant ne lit pas encore : chaque consigne est lue à voix haute automatiquement, et les réponses sont des images, des points ou des chiffres jusqu'à 10.
+
+- **Maths (7 jeux)** : compter jusqu'à 10, ajouter, faire 5 et 10, le plus et le moins, le train des nombres (aussi à l'envers), les formes (rond, carré, triangle, rectangle), les suites logiques.
+- **Langage et lecture (6 jeux)** : lettres capitales, taper les syllabes, les rimes, le premier son, le même mot, écouter une phrase et montrer l'image.
 
 ## Maths : 11 jeux
 
@@ -42,9 +49,9 @@ Les consignes peuvent être lues à voix haute, sans jamais lire la réponse ni 
 
 ## Fiches à imprimer (PDF)
 
-Le dossier [`fiches/`](fiches/) contient une fiche par niveau et par volet : `cp-maths.pdf`, `cp-lecture.pdf`, … `cm1-lecture.pdf`. Chacune propose deux pages d'exercices, une page de petits problèmes (maths) ou de textes à comprendre (lecture), puis un corrigé pour les parents. L'accueil du jeu donne le lien vers les fiches du niveau choisi.
+Le dossier [`fiches/`](fiches/) contient une fiche par niveau et par volet : `gs-maths.pdf`, `gs-lecture.pdf`, `cp-maths.pdf`, … `cm1-lecture.pdf`. Les fiches de Grande Section sont illustrées et faites pour être lues par un adulte. Chacune propose deux pages d'exercices, une page de petits problèmes (maths) ou de textes à comprendre (lecture), puis un corrigé pour les parents. L'accueil du jeu donne le lien vers les fiches du niveau choisi.
 
-Pour fabriquer une autre série (autres nombres, autres mots), avec Node.js et `pip install reportlab` :
+Pour fabriquer une autre série (autres nombres, autres mots), avec Node.js, `pip install reportlab pillow` et la police Noto Color Emoji (pour les images de GS) :
 
 ```
 python3 tools/fiches.py --serie 2
